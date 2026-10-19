@@ -13,6 +13,7 @@ const BUILDER: LexerTreeBuilder = blk: {
     builder.addKeyword("@//", common.Keyword.comment);
 
     builder.addKeyword("global", common.Keyword.GLOBAL);
+    builder.addKeyword("auto", common.Keyword.AUTO);
     builder.addKeyword("class", common.Keyword.CLASS);
     builder.addKeyword("function", common.Keyword.FUNCTION);
     builder.addKeyword("property", common.Keyword.PROPERTY);

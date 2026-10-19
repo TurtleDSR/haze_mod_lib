@@ -30,17 +30,18 @@ pub fn getTokens(data: []const u8, allocator: std.mem.Allocator) Error!std.Array
     var i: usize = 0;
     main_loop: while (i < data.len) : (i += 1) {
         const cur = data[i];
-        
-        if(cur == '\n' or cur == '\r') {
-            if(token_str.items.len != 0) {
+
+        if (cur == '\n' or cur == '\r') {
+            if (token_str.items.len != 0) {
                 token.keyword = lexertree.tree.getKeyword(token_str.items) catch ._text;
                 token.data = allocator.dupe(u8, token_str.items) catch return Error.OutOfMemory;
-
+     
                 tokens.append(allocator, token) catch return Error.OutOfMemory;
                 token = .{};
                 token_str.clearRetainingCapacity();
 
-                const newline_token: Token = .{.keyword = ._newline, .data = allocator.dupe(u8, "\n") catch return Error.OutOfMemory};
+                const newline_token: Token = .{ .keyword = ._newline, .data = allocator.dupe(u8, "\n") catch return Error.OutOfMemory };
+
                 tokens.append(allocator, newline_token) catch return Error.OutOfMemory;
             }
 
@@ -69,13 +70,18 @@ pub fn getTokens(data: []const u8, allocator: std.mem.Allocator) Error!std.Array
         if (std.mem.eql(u8, token_str.items, "@//")) {
             token.keyword = .comment;
             token.data = allocator.dupe(u8, token_str.items) catch return Error.OutOfMemory;
-
+          
             tokens.append(allocator, token) catch return Error.OutOfMemory;
             token = .{};
             token_str.clearRetainingCapacity();
             continue :main_loop;
         }
     }
+
+    token.keyword = lexertree.tree.getKeyword(token_str.items) catch ._text;
+    token.data = allocator.dupe(u8, token_str.items) catch return Error.OutOfMemory;
+   
+    tokens.append(allocator, token) catch return Error.OutOfMemory;
 
     return tokens;
 }

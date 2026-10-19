@@ -5,7 +5,10 @@ const scriptedit = @import("../parser/scriptedit.zig");
 const InjectorError = common.InjectorError;
 const ScriptEdit = scriptedit.ScriptEdit;
 
-pub fn executeEdit(step: ScriptEdit, io: std.Io) InjectorError!void {
-    _ = step;
+pub fn executeEdit(step: *ScriptEdit, allocator: std.mem.Allocator, io: std.Io) InjectorError!void {
+    defer {
+        step.deinit(allocator);
+        allocator.destroy(step);
+    }
     _ = io;
 }

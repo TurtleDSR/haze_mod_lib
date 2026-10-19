@@ -20,6 +20,8 @@ const ScriptEdit = scriptedit.ScriptEdit;
 pub const ModLib = struct {
     /// Path to the games script folder on disk. (<Steam_Common>/ItTakesTwo/Nuts/ for example)
     scripts_path: [:0]const u8,
+    /// Path to the games script folder on disk. (<Steam_Common>/ItTakesTwo/Nuts/Content/Paks for example)
+    pak_path: [:0]const u8,
     /// **Note:**
     ///
     /// This field is intended to be used only internally.
@@ -59,6 +61,7 @@ pub const ModLib = struct {
     pub fn init(game_path: [:0]const u8, allocator: std.mem.Allocator) InjectorError!ModLib {
         const handle: ModLib = .{
             .scripts_path = std.fmt.allocPrintSentinel(allocator, "{s}/Scripts/", .{game_path}, 0) catch return InjectorError.OutOfMemory,
+            .pak_path = std.fmt.allocPrintSentinel(allocator, "{s}/Content/Paks/", .{game_path}, 0) catch return InjectorError.OutOfMemory,
             ._allocator = allocator,
         };
 
@@ -68,6 +71,7 @@ pub const ModLib = struct {
     /// Destroys a ModLib handle
     pub fn deinit(self: *ModLib) void {
         self._allocator.free(self.scripts_path);
+        self._allocator.free(self.pak_path);
 
         self._hazemod_mod_pool.destroy(self._allocator);
         self._hazemod_mod_queue.deinit(self._allocator);
@@ -119,30 +123,40 @@ pub const ModLib = struct {
                 _ = try self.orderModR(key);
             }
 
-            var buf: [256]ScriptEdit = @splat(ScriptEdit{}); //256 should avoid wait time most of the time i think
+            var buf: [256]*ScriptEdit = @splat(@constCast(&ScriptEdit{})); //256 should avoid wait time most of the time i think
 
             var level: u8 = 0;
 
-            var thread_stop: std.atomic.Value(bool) = .init(false); //threads will stop when this is set true
-
             //use cores / 2 as our thread count
             //unless mod count is less than that, we use modcount
-            const thread_count = @min(self._hazemod_mod_queue.items.len, (std.Thread.getCpuCount() catch return InjectorError.ThreadingError) / 2);
-            var edit_queue: std.Io.Queue(ScriptEdit) = .init(&buf);
+            const thread_count = @min(self._hazemod_mod_queue.items.len, @max((std.Thread.getCpuCount() catch return InjectorError.ThreadingError) / 2, 1));
+            var thread_list: std.ArrayList(std.Thread) = .empty;
+            thread_list.ensureTotalCapacity(self._allocator, thread_count) catch return InjectorError.OutOfMemory;
+            defer thread_list.deinit(self._allocator);
+
+            var edit_queue: std.Io.Queue(*ScriptEdit) = .init(&buf);
 
             var task_list: std.ArrayList(std.Io.Future(InjectorError!void)) = .empty;
-            defer task_list.clearAndFree(self._allocator);
+            defer blk: {
+                edit_queue.close(io);
 
-            for (0..thread_count) |i| {
-                _ = i;
-                var thread = std.Thread.spawn(.{ .allocator = self._allocator }, threadExecuteEdits, .{ io, &edit_queue, &thread_stop }) catch return InjectorError.ThreadingError;
-                thread.detach();
+                for(thread_list.items) |thread| {
+                    thread.join();
+                }
+                task_list.deinit(self._allocator);
+
+                break :blk;
+            }
+
+            for (0..thread_count) |_| {
+                const thread = std.Thread.spawn(.{ .allocator = self._allocator }, threadExecuteEdits, .{ self._allocator, io, &edit_queue }) catch return InjectorError.ThreadingError;
+                thread_list.appendAssumeCapacity(thread);
             }
 
             while (self._hazemod_mod_queue.items.len > 0) : (level += 1) {
                 while (self._hazemod_mod_queue.items.len > 0 and self._hazemod_mod_queue.peek().?.dependency_level == level) { //start all mods of the current level
                     if (self._hazemod_mod_queue.pop()) |m| {
-                        const task: std.Io.Future(InjectorError!void) = io.async(workerStreamEdits, .{ m, &edit_queue, self._allocator });
+                    const task: std.Io.Future(InjectorError!void) = io.async(workerStreamEdits, .{ self, m, &edit_queue, self._allocator, io });
                         task_list.append(self._allocator, task) catch return InjectorError.OutOfMemory;
                     } else {
                         return InjectorError.UnknownError;
@@ -150,12 +164,11 @@ pub const ModLib = struct {
                 }
 
                 for (task_list.items) |*t| { //await all tasks finished
-                    try t.await(io);
+                    t.await(io) catch |err| return err;
                 }
 
                 task_list.clearRetainingCapacity();
             }
-            thread_stop.store(true, .release);
         }
 
         self._hazemod_mod_pool.purge();
@@ -228,7 +241,67 @@ pub const ModLib = struct {
             return InjectorError.MissingDependency;
         }
     }
+
+    /// Streams edits to the queue to be executed multithreaded
+    fn workerStreamEdits(self: *ModLib, mod: Mod, queue: *std.Io.Queue(*ScriptEdit), allocator: std.mem.Allocator, io: std.Io) InjectorError!void {
+        var z = zip.open(mod.path, zip.defaultCompressionLevel, 'r') catch return InjectorError.FileOpenFailure;
+        {
+            defer z.close();
+
+            const entries = z.getEntryTotal() catch return InjectorError.FileReadError;
+
+            for (0..entries) |i| {
+                z.openEntryByIndex(i) catch return InjectorError.FileReadError;
+                {
+                    defer z.closeEntry();
+
+                    const entry_name = z.getEntryName() catch return InjectorError.FileReadError;
+
+                    if (std.mem.eql(u8, std.Io.Dir.path.extension(entry_name), ".as")) { //check if file is .as
+                        const contents = z.readEntry(allocator) catch return InjectorError.FileReadError;
+                        defer allocator.free(contents);
+                        parser.streamEdits(entry_name, contents, queue, allocator, io) catch |err| return err;
+                    }
+
+                    if (std.mem.eql(u8, std.Io.Dir.path.extension(entry_name), ".pak")) { //check if file is .pak
+                        const basename = @constCast(std.Io.Dir.path.basename(entry_name));
+                        const dot_index = std.mem.findLast(u8, basename, ".");
+                        var pak_name: []u8 = undefined;
+
+                        if(dot_index) |d| {
+                            pak_name = basename[0..d];
+                        } else {
+                            return InjectorError.UnknownError;
+                        }
+                        
+                        var pak_name_new: ?[]u8 = null;
+                        defer if(pak_name_new) |p| allocator.free(p);
+
+                        if(!std.mem.endsWith(u8, pak_name, "_P")) {
+                            pak_name_new = std.fmt.allocPrint(allocator, "{s}{s}", .{pak_name, "_P"}) catch return InjectorError.OutOfMemory;
+
+                            pak_name = pak_name_new orelse pak_name;
+                        }
+
+                        const path: [:0]u8 = std.fmt.allocPrintSentinel(allocator, "{s}/{s}{s}", .{self.pak_path, pak_name, ".pak"}, 0) catch return InjectorError.OutOfMemory;
+                        defer allocator.free(path);
+                        
+                        z.fileReadEntry(path) catch return InjectorError.FileWriteError;
+                    }
+                }
+            }
+        }
+    }
 };
+
+/// Executes edits from the queue multithreaded
+fn threadExecuteEdits(allocator: std.mem.Allocator, io: std.Io, queue: *std.Io.Queue(*ScriptEdit)) InjectorError!void {
+    while (queue.getOne(io)) |edit| {
+        try injector.executeEdit(edit, allocator, io);
+    } else |_| {
+        return;
+    }
+}
 
 /// Used for ordering mods in the installation queue.
 fn orderMods(context: void, a: Mod, b: Mod) std.math.Order {
@@ -240,42 +313,5 @@ fn orderMods(context: void, a: Mod, b: Mod) std.math.Order {
         return std.math.Order.eq;
     } else {
         return std.math.Order.gt;
-    }
-}
-
-/// Executes edits from the queue multithreaded
-fn threadExecuteEdits(io: std.Io, queue: *std.Io.Queue(ScriptEdit), stop_condition: *std.atomic.Value(bool)) InjectorError!void {
-    while (!stop_condition.load(.acquire)) {
-        const edit = queue.getOne(io) catch return InjectorError.ThreadingError;
-        try injector.executeEdit(edit, io);
-    }
-}
-
-/// Streams edits to the queue to be executed multithreaded
-fn workerStreamEdits(mod: Mod, queue: *std.Io.Queue(ScriptEdit), allocator: std.mem.Allocator) InjectorError!void {
-    var z = zip.open(mod.path, zip.defaultCompressionLevel, 'r') catch return InjectorError.FileOpenFailure;
-    {
-        defer z.close();
-
-        const entries = z.getEntryTotal() catch return InjectorError.FileReadError;
-
-        for (0..entries) |i| {
-            z.openEntryByIndex(i) catch return InjectorError.FileReadError;
-            {
-                defer z.closeEntry();
-
-                const entry_name = z.getEntryName() catch return InjectorError.FileReadError;
-
-                if (std.mem.eql(u8, std.Io.Dir.path.extension(entry_name), ".as")) { //check if file is .as
-                    const contents = z.readEntry(allocator) catch return InjectorError.FileReadError;
-                    defer allocator.free(contents);
-                    try parser.streamEdits(contents, queue, allocator);
-                }
-
-                if (std.mem.eql(u8, std.Io.Dir.path.extension(entry_name), ".pak")) { //check if file is .pak
-                    //unimplemented
-                }
-            }
-        }
     }
 }

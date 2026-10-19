@@ -53,10 +53,9 @@ pub const Mod = struct {
     /// Do not forget to call deinit on the returned handle when finished.
     pub fn load(file: [:0]const u8, allocator: std.mem.Allocator) ModHandleError!Mod {
         const format = blk: {
-            var buf = [_]u8{'_'} ** 4;
             var form = ModFormat.HAZEMOD;
 
-            if (std.mem.eql(u8, std.ascii.lowerString(&buf, file[(file.len - 4)..file.len]), ".zip")) {
+            if (std.mem.eql(u8, std.Io.Dir.path.extension(file), ".zip")) {
                 form = ModFormat.ZIP;
             }
 
@@ -85,7 +84,15 @@ pub const Mod = struct {
 
                     z.openEntry("properties.json") catch |err| {
                         if (err == zip.ZipError.EntryNotFound) {
-                            m.properties = .{};
+                            m.properties.author = "Unknown";
+                            m.properties.version = "0.0.0";
+
+                            const name_buf = allocator.dupe(u8, std.Io.Dir.path.basename(file[0 .. file.len - 4])) catch return ModHandleError.OutOfMemoryError;
+                            m.properties.name = name_buf;
+
+                            const id_buf = std.mem.concat(allocator, u8, &.{ "com.unknown.", name_buf }) catch return ModHandleError.OutOfMemoryError;
+                            m.properties.id = id_buf;
+                            
                             return m;
                         } else {
                             return ModHandleError.PropertiesOpenError;
@@ -99,10 +106,7 @@ pub const Mod = struct {
 
                         const properties = json.parseFromSlice(ModProperties, allocator, property_data, .{
                             .allocate = .alloc_always,
-                        }) catch {
-                            m.properties = .{};
-                            return m;
-                        };
+                        }) catch return ModHandleError.PropertiesParseError;
 
                         m.properties = properties.value;
                         m._parsed_properties = properties;

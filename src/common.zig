@@ -18,6 +18,7 @@ pub const Keyword = enum {
 
     //scope
     GLOBAL,
+    AUTO,
     CLASS,
     FUNCTION,
     PROPERTY,

@@ -13,7 +13,7 @@ test "inject zip mod" {
     defer mod.deinit();
 
     try handle.queueMod(mod);
-    
+
     try handle.installMods(io);
 }
 
@@ -25,6 +25,18 @@ test "inject hazemod" {
     defer mod.deinit();
 
     try handle.queueMod(mod);
-    
+
+    try handle.installMods(io);
+}
+
+test "inject pak hazemod" {
+    var handle = try modlib.ModLib.init("test/static/sandbox", allocator);
+    defer handle.deinit();
+
+    var mod = try modlib.Mod.load("test/static/mods/pak-test.hazemod", allocator);
+    defer mod.deinit();
+
+    try handle.queueMod(mod);
+
     try handle.installMods(io);
 }

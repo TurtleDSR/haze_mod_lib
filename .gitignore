@@ -3,5 +3,3 @@
 zig-pkg/
 zig-out/
 test/static/sandbox/
-
-tokens.txt
