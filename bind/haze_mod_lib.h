@@ -46,7 +46,7 @@ Initializes a ModLib handle.
 
 \note Do not forget to call deinit on the returned handle when finished.
 */
-DLLIMPORT modlib* modlib_init(char game_path[], int* err);
+DLLIMPORT modlib* modlib_init(const char* game_path, int* err);
 /*
 Destroys a modlib handle
 */
@@ -83,11 +83,15 @@ Load a mod file into a mod handle.
 
 \note Do not forget to call deinit on the returned handle when finished.
 */
-DLLIMPORT mod* modlib_mod_load(char file[], int* err);
+DLLIMPORT mod* modlib_mod_load(const char* file, int* err);
 /*
 Destroys a mod handle
 */
 DLLIMPORT void modlib_mod_deinit(mod* handle);
+/*
+Returns error string
+*/
+DLLIMPORT char* modlib_getErrorMessageFromCode(int code);
 
 #ifdef __cplusplus
 }

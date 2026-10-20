@@ -143,3 +143,26 @@ export fn modlib_mod_deinit(handle: *mod) callconv(.c) void {
     ptr.deinit();
     std.heap.c_allocator.destroy(ptr);
 }
+
+/// Returns error string
+export fn modlib_getErrorMessageFromCode(code: c_int) [*c]const u8 {
+    return switch (@errorFromInt(@as(u16, @intCast(code)))) {
+        Error.Success => "No error",
+        Error.FileNotFound => "File Not Found Exception",
+        Error.FileOpenFailure => "File Open Exception",
+        Error.FileReadError => "File Read Exception",
+        Error.FileWriteError => "File Write Exception",
+        Error.OutOfMemory => "Out of Memory Exception",
+        Error.ThreadingError => "Threading Error",
+        Error.SyntaxError => "Syntax Error",
+        Error.MissingDependency => "Missing Dependency",
+        Error.ClassNotFound => "Class Not Found Exception",
+        Error.FunctionNotFound => "Function Not Found Exception",
+        Error.PropertyNotFound => "Property Not Found Exception",
+        Error.EnumNotFound => "Enum Not Found Exception",
+        Error.PropertiesOpenError => "Properties Open Exception",
+        Error.PropertiesReadError => "Properties Read Exception",
+        Error.PropertiesParseError => "Properties Parse Exception",
+        else => "Unknown Error Occured",
+    };
+}

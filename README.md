@@ -10,5 +10,6 @@
 ## Credits:
 * TurtleDSR (All non-external code was written by me)
 * Kuba (External Zip Library) (zig bindings were written by me)
+* Huge credit to the authors of SWIG, it makes generating the bindings from C to Java, Python and C# possible without a huge headache.
 
 ## [Fog Language Reference](DOCS.md)
