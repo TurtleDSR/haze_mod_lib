@@ -10,7 +10,7 @@ const Keyword = common.Keyword;
 
 const ScriptEdit = scriptedit.ScriptEdit;
 
-pub fn streamEdits(file: []const u8, data: []const u8, queue: *std.Io.Queue(*ScriptEdit), allocator: std.mem.Allocator, io: std.Io) InjectorError!void {
+pub fn streamEdits(file: []const u8, data: []const u8, queue: *std.Io.Queue(*ScriptEdit), queue_size: *std.atomic.Value(u8), allocator: std.mem.Allocator, io: std.Io) InjectorError!void {
     var tokens = lexer.getTokens(data, allocator) catch |err| {
         return switch (err) {
             lexer.Error.OutOfMemory => InjectorError.OutOfMemory,
@@ -26,18 +26,16 @@ pub fn streamEdits(file: []const u8, data: []const u8, queue: *std.Io.Queue(*Scr
     }
 
     var opened_script_file: []const u8 = "";
+    defer if (opened_script_file.len > 0) allocator.free(opened_script_file);
+
     var script_file_is_opened = false;
 
     var i: usize = 0;
 
     var override_edit: ScriptEdit = .{ //edit queued to replace/add current .as file
-        .file = file,
+        .file = allocator.dupe(u8, file) catch return InjectorError.OutOfMemory,
         .operation = .REPLACE,
-        .target = .{
-            .scope = .FILE
-        },
-        
-        .data = "",
+        .target = .{ .scope = .GLOBAL },
     };
 
     errdefer override_edit.deinit(allocator);
@@ -48,15 +46,21 @@ pub fn streamEdits(file: []const u8, data: []const u8, queue: *std.Io.Queue(*Scr
         switch (token.keyword) {
             Keyword.open => {
                 i += 1;
-                if(i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
+                if (i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
                 token = tokens.items[i];
 
                 if (token.keyword != Keyword._text) return InjectorError.SyntaxError;
 
-                opened_script_file = token.data;
+                const new_script_file = allocator.dupe(u8, token.data) catch return InjectorError.OutOfMemory;
+
+                if (opened_script_file.len > 0) {
+                    allocator.free(opened_script_file);
+                }
+
+                opened_script_file = new_script_file;
                 script_file_is_opened = true;
 
-                while(i < tokens.items.len and token.keyword != Keyword._newline) : (i += 1) { //skip to next line
+                while (i < tokens.items.len and token.keyword != Keyword._newline) : (i += 1) { //skip to next line
                     token = tokens.items[i];
                 }
                 i -= 1;
@@ -69,7 +73,7 @@ pub fn streamEdits(file: []const u8, data: []const u8, queue: *std.Io.Queue(*Scr
                 defer import_tokens.clearAndFree(allocator);
 
                 i += 1;
-                if(i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
+                if (i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
                 token = tokens.items[i];
 
                 import_tokens.append(allocator, "import ") catch return InjectorError.OutOfMemory;
@@ -85,7 +89,9 @@ pub fn streamEdits(file: []const u8, data: []const u8, queue: *std.Io.Queue(*Scr
                 edit.target = .{
                     .scope = .IMPORT,
                 };
-                edit.file = opened_script_file;
+                edit.file = allocator.dupe(u8, opened_script_file) catch return InjectorError.OutOfMemory;
+                errdefer allocator.free(edit.file);
+
                 edit.data = import_statement;
 
                 const submit_edit = allocator.create(ScriptEdit) catch return InjectorError.OutOfMemory;
@@ -96,9 +102,9 @@ pub fn streamEdits(file: []const u8, data: []const u8, queue: *std.Io.Queue(*Scr
                     allocator.destroy(submit_edit);
                     return InjectorError.ThreadingError;
                 };
-                edit.print();
+                _ = queue_size.fetchAdd(1, .release);
 
-                while(i < tokens.items.len and token.keyword != Keyword._newline) : (i += 1) { //skip to next line
+                while (i < tokens.items.len and token.keyword != Keyword._newline) : (i += 1) { //skip to next line
                     token = tokens.items[i];
                 }
                 i -= 1;
@@ -108,12 +114,14 @@ pub fn streamEdits(file: []const u8, data: []const u8, queue: *std.Io.Queue(*Scr
                 if (!script_file_is_opened) return InjectorError.SyntaxError;
 
                 i += 1;
-                if(i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
+                if (i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
                 token = tokens.items[i];
 
                 var edit: ScriptEdit = .{};
 
-                edit.file = opened_script_file;
+                edit.file = allocator.dupe(u8, opened_script_file) catch return InjectorError.OutOfMemory;
+                errdefer allocator.free(edit.file);
+
                 edit.operation = .REPLACE;
                 edit.target = .{};
 
@@ -125,66 +133,71 @@ pub fn streamEdits(file: []const u8, data: []const u8, queue: *std.Io.Queue(*Scr
                     else => return InjectorError.SyntaxError,
                 };
 
-                if(edit.target.scope == .CLASS) { //get class identifier
-                    edit.target.identifier = token.data;
+                if (edit.target.scope == .CLASS) { //get class identifier
+                    edit.target.identifier = allocator.dupe(u8, token.data) catch return InjectorError.OutOfMemory;
                 }
+                errdefer if (edit.target.identifier.len > 0) {
+                    allocator.free(edit.target.identifier);
+                };
 
                 const sub_target = allocator.create(scriptedit.Target) catch return InjectorError.OutOfMemory;
                 sub_target.* = .{};
                 errdefer allocator.destroy(sub_target);
 
                 edit.target.target = sub_target;
-                
+
                 i += 1;
-                if(i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
+                if (i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
                 token = tokens.items[i];
-                
+
                 edit.target.target.?.scope = switch (token.keyword) {
                     Keyword.FUNCTION => scriptedit.Scope.FUNCTION,
                     Keyword.PROPERTY => scriptedit.Scope.PROPERTY,
                     Keyword.ENUM => scriptedit.Scope.ENUM,
+                    Keyword.CLASS => scriptedit.Scope.CLASS,
 
                     else => return InjectorError.SyntaxError,
                 };
-        
-                i += 1;
-                if(i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
-                token = tokens.items[i];
-                edit.target.target.?.identifier = token.data;
 
-                while(i < tokens.items.len and token.keyword != Keyword._newline) : (i += 1) { //skip to next line
+                i += 1;
+                if (i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
+                token = tokens.items[i];
+                edit.target.target.?.identifier = allocator.dupe(u8, token.data) catch return InjectorError.OutOfMemory;
+                errdefer if (edit.target.target.?.identifier.len > 0) {
+                    allocator.free(edit.target.identifier);
+                };
+
+                while (i < tokens.items.len and token.keyword != Keyword._newline) : (i += 1) { //skip to next line
                     token = tokens.items[i];
                 }
                 i -= 1;
 
                 i += 1;
-                if(i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
-                token = tokens.items[i];
-                while(i < tokens.items.len and token.keyword != Keyword.end) : (i += 1) {
-                    const new_data = std.fmt.allocPrint(allocator, "{s} {s}", .{edit.data, token.data}) catch return InjectorError.OutOfMemory;
-                    errdefer allocator.free(new_data);
+                if (i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
+                while (i < tokens.items.len) : (i += 1) {
+                    token = tokens.items[i];
+                    if (token.keyword == Keyword.end) break;
 
-                    if(edit.data.len > 0) allocator.free(edit.data);
+                    const new_data = std.fmt.allocPrint(allocator, "{s} {s}", .{ edit.data, token.data }) catch return InjectorError.OutOfMemory;
+                    errdefer allocator.free(new_data);
+                    allocator.free(edit.data);
 
                     edit.data = new_data;
-
-                    token = tokens.items[i];
-                } else if(token.keyword != Keyword.end) { //tokens ran out, return syntax error
+                } else if (token.keyword != Keyword.end) { //tokens ran out, return syntax error
                     return InjectorError.SyntaxError;
                 }
-                i -= 1;
 
                 const submit_edit = allocator.create(ScriptEdit) catch return InjectorError.OutOfMemory;
                 submit_edit.* = edit;
 
-                edit.print();
                 queue.putOne(io, submit_edit) catch {
                     submit_edit.deinit(allocator);
                     allocator.destroy(submit_edit);
                     return InjectorError.ThreadingError;
                 };
+                _ = queue_size.fetchAdd(1, .release);
 
-                while(i < tokens.items.len and token.keyword != Keyword._newline) : (i += 1) { //skip to next line
+                while (i < tokens.items.len and token.keyword != Keyword._newline) : (i += 1) { //skip to next line
                     token = tokens.items[i];
                 }
                 i -= 1;
@@ -194,12 +207,14 @@ pub fn streamEdits(file: []const u8, data: []const u8, queue: *std.Io.Queue(*Scr
                 if (!script_file_is_opened) return InjectorError.SyntaxError;
 
                 i += 1;
-                if(i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
+                if (i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
                 token = tokens.items[i];
 
                 var edit: ScriptEdit = .{};
 
-                edit.file = opened_script_file;
+                edit.file = allocator.dupe(u8, opened_script_file) catch return InjectorError.OutOfMemory;
+                errdefer allocator.free(edit.file);
+
                 edit.operation = .ADD;
 
                 edit.target.scope = switch (token.keyword) {
@@ -210,70 +225,91 @@ pub fn streamEdits(file: []const u8, data: []const u8, queue: *std.Io.Queue(*Scr
                     else => return InjectorError.SyntaxError,
                 };
 
-                if(edit.target.scope == .CLASS) { //get class identifier
-                    edit.target.identifier = token.data;
+                if (edit.target.scope == .CLASS) { //get class identifier
+                    edit.target.identifier = allocator.dupe(u8, token.data) catch return InjectorError.OutOfMemory;
                 }
+                errdefer if (edit.target.identifier.len > 0) {
+                    allocator.free(edit.target.identifier);
+                };
+
+                const sub_target = allocator.create(scriptedit.Target) catch return InjectorError.OutOfMemory;
+                sub_target.* = .{};
+                errdefer allocator.destroy(sub_target);
+
+                edit.target.target = sub_target;
 
                 i += 1;
-                if(i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
+                if (i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
                 token = tokens.items[i];
-                while(i < tokens.items.len and token.keyword != Keyword.end) : (i += 1) {
-                    const new_data = std.fmt.allocPrint(allocator, "{s} {s}", .{edit.data, token.data}) catch return InjectorError.OutOfMemory;
-                    errdefer allocator.free(new_data);
 
-                    if(edit.data.len > 0) allocator.free(edit.data);
+                edit.target.target.?.scope = switch (token.keyword) {
+                    Keyword.FUNCTION => scriptedit.Scope.FUNCTION,
+                    Keyword.PROPERTY => scriptedit.Scope.PROPERTY,
+                    Keyword.ENUM => scriptedit.Scope.ENUM,
+                    Keyword.CLASS => scriptedit.Scope.CLASS,
+
+                    else => return InjectorError.SyntaxError,
+                };
+
+                i += 1;
+                if (i + 1 >= tokens.items.len) return InjectorError.SyntaxError;
+                while (i < tokens.items.len) : (i += 1) {
+                    token = tokens.items[i];
+
+                    if (token.keyword == Keyword.end) break;
+
+                    const new_data = std.fmt.allocPrint(allocator, "{s} {s}", .{ edit.data, token.data }) catch return InjectorError.OutOfMemory;
+                    errdefer allocator.free(new_data);
+                    allocator.free(edit.data);
 
                     edit.data = new_data;
-                    token = tokens.items[i];
-                } else if(token.keyword != Keyword.end) { //tokens ran out, return syntax error
+                } else if (token.keyword != Keyword.end) { //tokens ran out, return syntax error
                     return InjectorError.SyntaxError;
                 }
-                i -= 1;
 
                 const submit_edit = allocator.create(ScriptEdit) catch return InjectorError.OutOfMemory;
                 submit_edit.* = edit;
 
-                edit.print();
                 queue.putOne(io, submit_edit) catch {
                     submit_edit.deinit(allocator);
                     allocator.destroy(submit_edit);
                     return InjectorError.ThreadingError;
                 };
+                _ = queue_size.fetchAdd(1, .release);
 
-                while(i < tokens.items.len and token.keyword != Keyword._newline) : (i += 1) { //skip to next line
+                while (i < tokens.items.len and token.keyword != Keyword._newline) : (i += 1) { //skip to next line
                     token = tokens.items[i];
                 }
                 i -= 1;
             },
 
             Keyword.comment => {
-                while(i < tokens.items.len and token.keyword != Keyword._newline) : (i += 1) { //skip to next line
+                while (i < tokens.items.len and token.keyword != Keyword._newline) : (i += 1) { //skip to next line
                     token = tokens.items[i];
                 }
                 i -= 1;
             },
 
             Keyword._text => {
-                if (!script_file_is_opened) return InjectorError.SyntaxError;
+                while (i < tokens.items.len) : (i += 1) {
+                    token = tokens.items[i];
+                    if(tokenIsFunctionalKeyword(token)) break;
 
-                while(i < tokens.items.len and !tokenIsFunctionalKeyword(token)) : (i += 1) {
-                    const new_data = std.fmt.allocPrint(allocator, "{s} {s}", .{override_edit.data, token.data}) catch return InjectorError.OutOfMemory;
+                    const new_data = std.fmt.allocPrint(allocator, "{s} {s}", .{ override_edit.data, token.data }) catch return InjectorError.OutOfMemory;
                     errdefer allocator.free(new_data);
 
-                    if(override_edit.data.len > 0) allocator.free(override_edit.data);
+                    allocator.free(override_edit.data);
 
                     override_edit.data = new_data;
-                    token = tokens.items[i];
                 }
-                i -= 1;
             },
 
             Keyword._newline => {
-            //skip token
+                //skip token
             },
 
             else => {
-                if(!tokenIsFunctionalKeyword(token)) { //token got mistakenly lexed as parameter instead of text - assumed
+                if (!tokenIsFunctionalKeyword(token)) { //token got mistakenly lexed as parameter instead of text - assumed
                     tokens.items[i].keyword = ._text;
                     i -= 1; //retry token
                     continue;
@@ -291,12 +327,14 @@ pub fn streamEdits(file: []const u8, data: []const u8, queue: *std.Io.Queue(*Scr
         };
         edit_ptr.* = override_edit;
 
-        override_edit.print();
         queue.putOne(io, edit_ptr) catch {
             edit_ptr.deinit(allocator);
             allocator.destroy(edit_ptr);
             return InjectorError.ThreadingError;
         };
+        _ = queue_size.fetchAdd(1, .release);
+    } else {
+        override_edit.deinit(allocator);
     }
 }
 

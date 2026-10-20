@@ -1,7 +1,9 @@
 const std = @import("std");
 const common = @import("../common.zig");
+
 const modpool = @import("../pool/modpool.zig");
 const scriptedit = @import("../parser/scriptedit.zig");
+const threadmap = @import("../injector/threadmap.zig");
 
 const parser = @import("../parser/parser.zig");
 const injector = @import("../injector/injector.zig");
@@ -9,6 +11,7 @@ const injector = @import("../injector/injector.zig");
 const zip = common.zip;
 
 const InjectorError = common.InjectorError;
+const InjectorErrorCode = common.InjectorErrorCode;
 const ModFormat = common.ModFormat;
 const Mod = common.Mod;
 
@@ -16,11 +19,13 @@ const ModPool = modpool.ModPool;
 
 const ScriptEdit = scriptedit.ScriptEdit;
 
+const ThreadMap = threadmap.ThreadMap;
+
 /// Handle for mod injection
 pub const ModLib = struct {
     /// Path to the games script folder on disk. (<Steam_Common>/ItTakesTwo/Nuts/ for example)
     scripts_path: [:0]const u8,
-    /// Path to the games script folder on disk. (<Steam_Common>/ItTakesTwo/Nuts/Content/Paks for example)
+    /// Path to the games script folder on disk. (<Steam_Common>/ItTakesTwo/Nuts/Content/Paks/ for example)
     pak_path: [:0]const u8,
     /// **Note:**
     ///
@@ -135,12 +140,17 @@ pub const ModLib = struct {
             defer thread_list.deinit(self._allocator);
 
             var edit_queue: std.Io.Queue(*ScriptEdit) = .init(&buf);
+            var edit_count: std.atomic.Value(u8) = .init(0);
+
+            var thread_map: ThreadMap = .{}; //used to stop race conditions of files
+            defer thread_map.deinit(io, self._allocator);
+            var thread_error: std.atomic.Value(InjectorErrorCode) = .init(InjectorErrorCode.Success);
 
             var task_list: std.ArrayList(std.Io.Future(InjectorError!void)) = .empty;
             defer blk: {
                 edit_queue.close(io);
 
-                for(thread_list.items) |thread| {
+                for (thread_list.items) |thread| {
                     thread.join();
                 }
                 task_list.deinit(self._allocator);
@@ -149,14 +159,14 @@ pub const ModLib = struct {
             }
 
             for (0..thread_count) |_| {
-                const thread = std.Thread.spawn(.{ .allocator = self._allocator }, threadExecuteEdits, .{ self._allocator, io, &edit_queue }) catch return InjectorError.ThreadingError;
+                const thread = std.Thread.spawn(.{ .allocator = self._allocator }, threadExecuteEdits, .{ self.scripts_path, &thread_map, &edit_queue, &edit_count, &thread_error, io, self._allocator }) catch return InjectorError.ThreadingError;
                 thread_list.appendAssumeCapacity(thread);
             }
 
             while (self._hazemod_mod_queue.items.len > 0) : (level += 1) {
                 while (self._hazemod_mod_queue.items.len > 0 and self._hazemod_mod_queue.peek().?.dependency_level == level) { //start all mods of the current level
                     if (self._hazemod_mod_queue.pop()) |m| {
-                    const task: std.Io.Future(InjectorError!void) = io.async(workerStreamEdits, .{ self, m, &edit_queue, self._allocator, io });
+                        const task: std.Io.Future(InjectorError!void) = io.async(workerStreamEdits, .{ self, m, &edit_queue, &edit_count, self._allocator, io });
                         task_list.append(self._allocator, task) catch return InjectorError.OutOfMemory;
                     } else {
                         return InjectorError.UnknownError;
@@ -164,10 +174,19 @@ pub const ModLib = struct {
                 }
 
                 for (task_list.items) |*t| { //await all tasks finished
-                    t.await(io) catch |err| return err;
+                    t.await(io) catch |err| {
+                        std.debug.print("err: {}\n", .{err});
+                    };
                 }
 
                 task_list.clearRetainingCapacity();
+
+                while (edit_count.load(.acquire) > 0) { //wait until all edits are complete
+                    std.Thread.yield() catch {};
+                }
+
+                const err = thread_error.load(.acquire);
+                if(err != InjectorErrorCode.Success) return InjectorErrorCode.errorFromCode(err);
             }
         }
 
@@ -243,7 +262,7 @@ pub const ModLib = struct {
     }
 
     /// Streams edits to the queue to be executed multithreaded
-    fn workerStreamEdits(self: *ModLib, mod: Mod, queue: *std.Io.Queue(*ScriptEdit), allocator: std.mem.Allocator, io: std.Io) InjectorError!void {
+    fn workerStreamEdits(self: *ModLib, mod: Mod, queue: *std.Io.Queue(*ScriptEdit), queue_size: *std.atomic.Value(u8), allocator: std.mem.Allocator, io: std.Io) InjectorError!void {
         var z = zip.open(mod.path, zip.defaultCompressionLevel, 'r') catch return InjectorError.FileOpenFailure;
         {
             defer z.close();
@@ -260,7 +279,7 @@ pub const ModLib = struct {
                     if (std.mem.eql(u8, std.Io.Dir.path.extension(entry_name), ".as")) { //check if file is .as
                         const contents = z.readEntry(allocator) catch return InjectorError.FileReadError;
                         defer allocator.free(contents);
-                        parser.streamEdits(entry_name, contents, queue, allocator, io) catch |err| return err;
+                        try parser.streamEdits(entry_name, contents, queue, queue_size, allocator, io);
                     }
 
                     if (std.mem.eql(u8, std.Io.Dir.path.extension(entry_name), ".pak")) { //check if file is .pak
@@ -268,24 +287,24 @@ pub const ModLib = struct {
                         const dot_index = std.mem.findLast(u8, basename, ".");
                         var pak_name: []u8 = undefined;
 
-                        if(dot_index) |d| {
+                        if (dot_index) |d| {
                             pak_name = basename[0..d];
                         } else {
                             return InjectorError.UnknownError;
                         }
-                        
-                        var pak_name_new: ?[]u8 = null;
-                        defer if(pak_name_new) |p| allocator.free(p);
 
-                        if(!std.mem.endsWith(u8, pak_name, "_P")) {
-                            pak_name_new = std.fmt.allocPrint(allocator, "{s}{s}", .{pak_name, "_P"}) catch return InjectorError.OutOfMemory;
+                        var pak_name_new: ?[]u8 = null;
+                        defer if (pak_name_new) |p| allocator.free(p);
+
+                        if (!std.mem.endsWith(u8, pak_name, "_P")) {
+                            pak_name_new = std.fmt.allocPrint(allocator, "{s}{s}", .{ pak_name, "_P" }) catch return InjectorError.OutOfMemory;
 
                             pak_name = pak_name_new orelse pak_name;
                         }
 
-                        const path: [:0]u8 = std.fmt.allocPrintSentinel(allocator, "{s}/{s}{s}", .{self.pak_path, pak_name, ".pak"}, 0) catch return InjectorError.OutOfMemory;
+                        const path: [:0]u8 = std.fmt.allocPrintSentinel(allocator, "{s}/{s}{s}", .{ self.pak_path, pak_name, ".pak" }, 0) catch return InjectorError.OutOfMemory;
                         defer allocator.free(path);
-                        
+
                         z.fileReadEntry(path) catch return InjectorError.FileWriteError;
                     }
                 }
@@ -295,9 +314,13 @@ pub const ModLib = struct {
 };
 
 /// Executes edits from the queue multithreaded
-fn threadExecuteEdits(allocator: std.mem.Allocator, io: std.Io, queue: *std.Io.Queue(*ScriptEdit)) InjectorError!void {
+fn threadExecuteEdits(dir: []const u8, filemap: *ThreadMap, queue: *std.Io.Queue(*ScriptEdit), queue_size: *std.atomic.Value(u8), error_field: *std.atomic.Value(InjectorErrorCode), io: std.Io, allocator: std.mem.Allocator) InjectorError!void {
     while (queue.getOne(io)) |edit| {
-        try injector.executeEdit(edit, allocator, io);
+        defer _ = queue_size.fetchSub(1, .release);
+        injector.executeEdit(dir, edit, filemap, allocator, io) catch |err| {
+           std.debug.print("ERROR: {}\n", .{err});
+           error_field.store(InjectorErrorCode.codeFromError(err), .release);
+        };
     } else |_| {
         return;
     }

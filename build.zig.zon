@@ -1,7 +1,7 @@
 .{
     .name = .haze_mod_lib,
     .version = "0.0.0",
-    .fingerprint = 0x22d6a54fdd742dd0,
+    .fingerprint = 0x51919bc75a5e3fc,
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
         .zip = .{
