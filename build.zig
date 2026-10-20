@@ -54,4 +54,24 @@ pub fn build(b: *std.Build) !void {
         builder.addRule(.{ .builtin = .no_orelse_unreachable }, .{});
         break :step builder.build();
     });
+
+    //bind step
+    const bind_module = b.createModule(.{
+        .root_source_file = b.path("bind/bind.zig"),
+        .target = target,
+        .optimize = optimise,
+        .link_libc = true,
+    });
+    bind_module.addImport("modlib", root_module);
+
+    const bind_lib_dynamic = b.addLibrary(.{
+        .name = "haze_mod_lib",
+        .linkage = .dynamic,
+        .root_module = bind_module,
+    });
+
+    const bind_dynamic_artifact = b.addInstallArtifact(bind_lib_dynamic, .{});
+
+    const bind_step = b.step("bind", "Generate bindings.");
+    bind_step.dependOn(&bind_dynamic_artifact.step);
 }

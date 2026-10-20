@@ -5,7 +5,7 @@ const common = @import("../common.zig");
 const zip = common.zip;
 
 const ModFormat = common.ModFormat;
-const ModHandleError = common.ModHandleError;
+const Error = common.Error;
 
 const ModList = std.ArrayList(Mod);
 
@@ -51,7 +51,7 @@ pub const Mod = struct {
     /// **Note**
     ///
     /// Do not forget to call deinit on the returned handle when finished.
-    pub fn load(file: [:0]const u8, allocator: std.mem.Allocator) ModHandleError!Mod {
+    pub fn load(file: [:0]const u8, allocator: std.mem.Allocator) Error!Mod {
         const format = blk: {
             var form = ModFormat.HAZEMOD;
 
@@ -73,10 +73,10 @@ pub const Mod = struct {
             ModFormat.HAZEMOD => { //hazemod format
                 var z = zip.open(file, zip.defaultCompressionLevel, 'r') catch |err| {
                     return switch (err) {
-                        zip.ZipError.FileNotFound => ModHandleError.FileNotFound,
-                        zip.ZipError.FileOpenFailure => ModHandleError.FileOpenFailure,
-                        zip.ZipError.FReadError => ModHandleError.FileReadError,
-                        else => ModHandleError.UnknownError,
+                        zip.ZipError.FileNotFound => Error.FileNotFound,
+                        zip.ZipError.FileOpenFailure => Error.FileOpenFailure,
+                        zip.ZipError.FReadError => Error.FileReadError,
+                        else => Error.UnknownError,
                     };
                 };
                 {
@@ -87,26 +87,26 @@ pub const Mod = struct {
                             m.properties.author = "Unknown";
                             m.properties.version = "0.0.0";
 
-                            const name_buf = allocator.dupe(u8, std.Io.Dir.path.basename(file[0 .. file.len - 4])) catch return ModHandleError.OutOfMemoryError;
+                            const name_buf = allocator.dupe(u8, std.Io.Dir.path.basename(file[0 .. file.len - 4])) catch return Error.OutOfMemory;
                             m.properties.name = name_buf;
 
-                            const id_buf = std.mem.concat(allocator, u8, &.{ "com.unknown.", name_buf }) catch return ModHandleError.OutOfMemoryError;
+                            const id_buf = std.mem.concat(allocator, u8, &.{ "com.unknown.", name_buf }) catch return Error.OutOfMemory;
                             m.properties.id = id_buf;
-                            
+
                             return m;
                         } else {
-                            return ModHandleError.PropertiesOpenError;
+                            return Error.PropertiesOpenError;
                         }
                     };
                     {
                         defer z.closeEntry();
 
-                        const property_data = z.readEntry(allocator) catch return ModHandleError.PropertiesReadError;
+                        const property_data = z.readEntry(allocator) catch return Error.PropertiesReadError;
                         defer allocator.free(property_data);
 
                         const properties = json.parseFromSlice(ModProperties, allocator, property_data, .{
                             .allocate = .alloc_always,
-                        }) catch return ModHandleError.PropertiesParseError;
+                        }) catch return Error.PropertiesParseError;
 
                         m.properties = properties.value;
                         m._parsed_properties = properties;
@@ -118,10 +118,10 @@ pub const Mod = struct {
                 m.properties.author = "Unknown";
                 m.properties.version = "0.0.0";
 
-                const name_buf = allocator.dupe(u8, std.Io.Dir.path.basename(file[0 .. file.len - 4])) catch return ModHandleError.OutOfMemoryError;
+                const name_buf = allocator.dupe(u8, std.Io.Dir.path.basename(file[0 .. file.len - 4])) catch return Error.OutOfMemory;
                 m.properties.name = name_buf;
 
-                const id_buf = std.mem.concat(allocator, u8, &.{ "com.unknown.", name_buf }) catch return ModHandleError.OutOfMemoryError;
+                const id_buf = std.mem.concat(allocator, u8, &.{ "com.unknown.", name_buf }) catch return Error.OutOfMemory;
                 m.properties.id = id_buf;
             },
         }
