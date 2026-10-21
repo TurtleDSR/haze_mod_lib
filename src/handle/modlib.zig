@@ -172,9 +172,11 @@ pub const ModLib = struct {
                     }
                 }
 
+                var task_error: Error = Error.Success;
+
                 for (task_list.items) |*t| { //await all tasks finished
                     t.await(io) catch |err| {
-                        std.debug.print("err: {}\n", .{err});
+                        task_error = err;
                     };
                 }
 
@@ -184,8 +186,9 @@ pub const ModLib = struct {
                     std.Thread.yield() catch {};
                 }
 
+                if (task_error != Error.Success) return task_error;
                 const err = thread_error.load(.acquire);
-                if (@errorFromInt(err) != Error.Success) return Error.Success;
+                if (@errorFromInt(err) != Error.Success) return @errorCast(@errorFromInt(err));
             }
         }
 
@@ -304,6 +307,7 @@ pub const ModLib = struct {
                         const path: [:0]u8 = std.fmt.allocPrintSentinel(allocator, "{s}/{s}{s}", .{ self.pak_path, pak_name, ".pak" }, 0) catch return Error.OutOfMemory;
                         defer allocator.free(path);
 
+                        std.debug.print("patching pak: {s}\n", .{path});
                         z.fileReadEntry(path) catch return Error.FileWriteError;
                     }
                 }

@@ -11,6 +11,7 @@ extern "C" {
   #define DLLIMPORT __attribute__ ((visibility ("default")))
 #endif
 
+#if !defined(SWIG)
 #define MODLIB_FILENOTFOUND 2
 #define MODLIB_FILEOPENFAILURE 3
 #define MODLIB_FILEREADERROR 4
@@ -27,6 +28,7 @@ extern "C" {
 #define MODLIB_PROPERTIESREADERROR 15
 #define MODLIB_PROPERTIESPARSEERROR 16
 #define MODLIB_UNKNOWNERROR 17
+#endif
 
 /*
 Handle for mod injection

@@ -11,11 +11,18 @@
 #endif
 
 %{
+#include <stdexcept>
+#include <string>
+#include <iostream>
+
 #include "haze_mod_lib.h"
 %}
 
 %nodefaultctor modlib_t;
 %nodefaultctor mod_t;
+
+%nodefaultdtor modlib_t;
+%nodefaultdtor mod_t;
 
 struct modlib_t {};
 struct mod_t {};

@@ -63,10 +63,11 @@ pub const Mod = struct {
         };
 
         var m = Mod{
-            .path = file,
+            .path = allocator.dupeSentinel(u8, file, 0) catch return Error.OutOfMemory,
             .format = format,
             ._allocator = allocator,
         };
+        errdefer allocator.free(m.path);
 
         //hazemod file should contain properties
         switch (format) {
@@ -76,7 +77,7 @@ pub const Mod = struct {
                         zip.ZipError.FileNotFound => Error.FileNotFound,
                         zip.ZipError.FileOpenFailure => Error.FileOpenFailure,
                         zip.ZipError.FReadError => Error.FileReadError,
-                        else => Error.UnknownError,
+                        else => Error.FileNotFound,
                     };
                 };
                 {
@@ -134,10 +135,11 @@ pub const Mod = struct {
         if (self._parsed_properties) |p| {
             p.deinit();
         } else {
-            //these are both allocated since they require string mutation.
             self._allocator.free(self.properties.name);
             self._allocator.free(self.properties.id);
         }
+
+        self._allocator.free(self.path);
     }
 };
 

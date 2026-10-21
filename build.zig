@@ -60,7 +60,6 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = b.path("bind/bind.zig"),
         .target = target,
         .optimize = optimise,
-        .link_libc = true,
     });
     bind_module.addImport("modlib", root_module);
 
@@ -70,8 +69,44 @@ pub fn build(b: *std.Build) !void {
         .root_module = bind_module,
     });
 
+    const bind_lib_static = b.addLibrary(.{
+        .name = "haze_mod_lib_static",
+        .linkage = .static,
+        .root_module = bind_module,
+    });
+
     const bind_dynamic_artifact = b.addInstallArtifact(bind_lib_dynamic, .{});
+    const bind_static_artifact = b.addInstallArtifact(bind_lib_static, .{});
 
     const bind_step = b.step("bind", "Generate bindings.");
     bind_step.dependOn(&bind_dynamic_artifact.step);
+    bind_step.dependOn(&bind_static_artifact.step);
+
+    const release_step = b.step("release", "Compile Bindings");
+
+    const java_bind_module = b.createModule(.{
+        .root_source_file = b.path("bind/bind.zig"),
+        .link_libcpp = true,
+        .target = target,
+        .optimize = optimise,
+    });
+    java_bind_module.addImport("modlib", root_module);
+
+    java_bind_module.addCSourceFile(.{
+        .file = b.path(".out/wrap/java/haze_mod_lib_wrap.cxx"),
+        .flags = &.{ "-std=c++23" },
+    });
+
+    java_bind_module.addIncludePath(b.path("bind/include/jni/"));
+    java_bind_module.addIncludePath(b.path("bind/"));
+
+    const java_dll = b.addLibrary(.{
+        .name = "haze_mod_lib_java",
+        .linkage = .dynamic,
+        .root_module = java_bind_module,
+    });
+
+    const java_bind_artifact = b.addInstallArtifact(java_dll, .{});
+
+    release_step.dependOn(&java_bind_artifact.step);
 }
