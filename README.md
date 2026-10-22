@@ -5,7 +5,7 @@
 * Installs mods with a sophisticated multi-threaded implementation that respects dependencies.
 * Handles both .zip format and .hazemod format.
 * Written in Zig.
-* Bindings for C, C++, Java, C# and Python.
+* Bindings for C, Java, C# and Python.
 
 ## Credits:
 * TurtleDSR (All non-external code was written by me)
