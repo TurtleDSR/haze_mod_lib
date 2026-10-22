@@ -9,11 +9,19 @@ bind: build
   @rm -rf .out/wrap/
 
   @[ -d .out/wrap/java/com/turtledsr/hazemodlib ] || mkdir -p .out/wrap/java/com/turtledsr/hazemodlib
+  @[ -d .out/wrap/python/ ] || mkdir -p .out/wrap/python/
+  @[ -d .out/wrap/csharp/ ] || mkdir -p .out/wrap/csharp/
+
   @cp zig-out/lib/haze_mod_lib_static.lib bind/include/haze_mod_lib.lib
   @cp zig-pkg/zip-1.0.4-17qA5UcTHwB6CVYazmkLoacjgUas9NAwGmxVtmy7wEBx/lib/zip_c.lib bind/include/zip_c.lib
 
   swig -java -c++ -package com.turtledsr.hazemodlib -outdir .out/wrap/java/com/turtledsr/hazemodlib -o .out/wrap/java/haze_mod_lib_wrap.cxx bind/haze_mod_lib.i
   @rm .out/wrap/java/com/turtledsr/hazemodlib/HazeModLib.java
+
+  swig -csharp -c++ -namespace Com.Turtledsr.HazeModLib -outdir .out/wrap/csharp -o .out/wrap/csharp/haze_mod_lib_wrap.cxx bind/haze_mod_lib.i
+  @rm .out/wrap/csharp/HazeModLib.cs
+
+  swig -python -c++ -outdir .out/wrap/python -o .out/wrap/python/haze_mod_lib_wrap.cxx bind/haze_mod_lib.i
 
 lint: build
   @clear
@@ -50,3 +58,18 @@ release: build-c
   @cp zig-out/bin/haze_mod_lib_java.dll .out/lib/java/haze_mod_lib.dll
   javac --release 11 -d .out/tmp/java/jar .out/wrap/java/com/turtledsr/hazemodlib/*.java
   jar -cvf .out/lib/java/hazemodlib.jar -C .out/tmp/java/jar .
+
+  #CSHARP
+  @[ -d .out/lib/csharp/ ] || mkdir -p .out/lib/csharp/
+  @[ -d .out/tmp/csharp/ ] || mkdir -p .out/tmp/csharp/
+  @dotnet new classlib -o .out/tmp/csharp/haze_mod_lib --name haze_mod_lib --force
+  @cp -r .out/wrap/csharp/*.cs .out/tmp/csharp/haze_mod_lib/
+  @cp zig-out/bin/haze_mod_lib_csharp.dll .out/lib/csharp/haze_mod_lib.dll
+  @rm .out/tmp/csharp/haze_mod_lib/Class1.cs
+  @dotnet build .out/tmp/csharp/haze_mod_lib/haze_mod_lib.csproj -c Release
+  @cp .out/tmp/csharp/haze_mod_lib/bin/Release/net10.0/haze_mod_lib.dll .out/lib/csharp/haze_mod_lib_csharp.dll
+
+  #PYTHON
+  @[ -d .out/lib/python/ ] || mkdir -p .out/lib/python/
+  cp .out/wrap/python/haze_mod_lib.py .out/lib/python/
+  @cp zig-out/bin/haze_mod_lib_python.dll .out/lib/python/haze_mod_lib.pyd

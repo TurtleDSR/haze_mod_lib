@@ -1,8 +1,6 @@
 //java only interface
 %module HazeModLib
 
-%include "exception.i"
-
 %pragma(java) jniclassclassmodifiers="class"
 
 %pragma(java) jniclasscode=%{

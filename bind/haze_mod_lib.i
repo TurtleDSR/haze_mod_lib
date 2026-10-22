@@ -1,3 +1,5 @@
+%include "exception.i"
+
 #ifdef SWIGJAVA
 %include "bindings/java.i"
 #endif

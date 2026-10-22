@@ -94,5 +94,53 @@ pub fn build(b: *std.Build) !void {
 
     const java_bind_artifact = b.addInstallArtifact(java_dll, .{});
 
+    const csharp_bind_module = b.createModule(.{
+        .root_source_file = b.path("bind/bind.zig"),
+        .link_libcpp = true,
+        .target = target,
+        .optimize = optimise,
+    });
+    csharp_bind_module.addImport("modlib", root_module);
+
+    csharp_bind_module.addCSourceFile(.{
+        .file = b.path(".out/wrap/csharp/haze_mod_lib_wrap.cxx"),
+        .flags = &.{ "-std=c++23" },
+    });
+
+    csharp_bind_module.addIncludePath(b.path("bind/"));
+
+    const csharp_dll = b.addLibrary(.{
+        .name = "haze_mod_lib_csharp",
+        .linkage = .dynamic,
+        .root_module = csharp_bind_module,
+    });
+
+    const csharp_bind_artifact = b.addInstallArtifact(csharp_dll, .{});
+
+    const python_bind_module = b.createModule(.{
+        .root_source_file = b.path("bind/bind.zig"),
+        .link_libcpp = true,
+        .target = target,
+        .optimize = optimise,
+    });
+    python_bind_module.addImport("modlib", root_module);
+
+    python_bind_module.addCSourceFile(.{
+        .file = b.path(".out/wrap/csharp/haze_mod_lib_wrap.cxx"),
+        .flags = &.{ "-std=c++23" },
+    });
+
+    python_bind_module.addIncludePath(b.path("bind/"));
+
+    const python_dll = b.addLibrary(.{
+        .name = "haze_mod_lib_python",
+        .linkage = .dynamic,
+        .root_module = python_bind_module,
+    });
+
+    const python_bind_artifact = b.addInstallArtifact(python_dll, .{});
+
     release_step.dependOn(&java_bind_artifact.step);
+    release_step.dependOn(&csharp_bind_artifact.step);
+    release_step.dependOn(&python_bind_artifact.step);
 }
