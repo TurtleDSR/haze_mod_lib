@@ -126,11 +126,17 @@ pub fn build(b: *std.Build) !void {
     python_bind_module.addImport("modlib", root_module);
 
     python_bind_module.addCSourceFile(.{
-        .file = b.path(".out/wrap/csharp/haze_mod_lib_wrap.cxx"),
+        .file = b.path(".out/wrap/python/haze_mod_lib_wrap.cxx"),
         .flags = &.{ "-std=c++23" },
     });
 
     python_bind_module.addIncludePath(b.path("bind/"));
+    python_bind_module.addIncludePath(b.path("bind/include/python/headers/"));
+    python_bind_module.addLibraryPath(b.path("bind/include/python/libs/"));
+
+    python_bind_module.linkSystemLibrary("python314", .{
+        .preferred_link_mode = .static,
+    });
 
     const python_dll = b.addLibrary(.{
         .name = "haze_mod_lib_python",

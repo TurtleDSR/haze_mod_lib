@@ -34,14 +34,7 @@ test: build
   @zig build test --summary all
 
 build-c: bind #c build script
-  @[ -d .out/c/test/ ] || mkdir -p .out/c/test/
-  @cp bind/haze_mod_lib.h test/c/include/
-  @cp zig-out/lib/haze_mod_lib.lib test/c/include/
   @cp zig-out/bin/haze_mod_lib.dll .out/c/test/
-
-test-c: build-c
-  clang -std=c23 -O0 test/c/test.c -o .out/c/test/test.exe -Itest/c/include/ -Ltest/c/include/ -lhaze_mod_lib
-  .out/c/test/test.exe
 
 release: build-c
   #C
@@ -72,4 +65,16 @@ release: build-c
   #PYTHON
   @[ -d .out/lib/python/ ] || mkdir -p .out/lib/python/
   cp .out/wrap/python/haze_mod_lib.py .out/lib/python/
-  @cp zig-out/bin/haze_mod_lib_python.dll .out/lib/python/haze_mod_lib.pyd
+  @cp zig-out/bin/haze_mod_lib_python.dll .out/lib/python/_haze_mod_lib.pyd
+
+test-c: release
+  @[ -d .out/c/test/ ] || mkdir -p .out/c/test/
+  @cp .out/lib/c/haze_mod_lib.h test/c/include/
+  @cp .out/lib/c/haze_mod_lib.lib test/c/include/
+  clang -std=c23 -O0 test/c/test.c -o .out/c/test/test.exe -Itest/c/include/ -Ltest/c/include/ -lhaze_mod_lib
+  .out/c/test/test.exe
+
+test-py: release
+  @cp .out/lib/python/haze_mod_lib.py test/py/lib/
+  @cp .out/lib/python/_haze_mod_lib.pyd test/py/lib/
+  py test/py/test.py

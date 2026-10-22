@@ -307,7 +307,6 @@ pub const ModLib = struct {
                         const path: [:0]u8 = std.fmt.allocPrintSentinel(allocator, "{s}/{s}{s}", .{ self.pak_path, pak_name, ".pak" }, 0) catch return Error.OutOfMemory;
                         defer allocator.free(path);
 
-                        std.debug.print("patching pak: {s}\n", .{path});
                         z.fileReadEntry(path) catch return Error.FileWriteError;
                     }
                 }
