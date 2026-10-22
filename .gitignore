@@ -1,6 +1,12 @@
 .vscode/
-.zig-cache/
-zig-pkg/
-zig-out/
+
 .out/
+.zig-cache/
+zig-out/
+zig-pkg/
+
 test/static/sandbox/
+
+#csharp project temp files
+test/cs/bin/
+test/cs/obj/

@@ -320,7 +320,6 @@ fn threadExecuteEdits(dir: []const u8, filemap: *ThreadMap, queue: *std.Io.Queue
     while (queue.getOne(io)) |edit| {
         defer _ = queue_size.fetchSub(1, .release);
         injector.executeEdit(dir, edit, filemap, allocator, io) catch |err| {
-            std.debug.print("ERROR: {}\n", .{err});
             error_field.store(@intFromError(err), .release);
         };
     } else |_| {
