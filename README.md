@@ -1,5 +1,5 @@
 # Library for installing mods to Angelscript Unreal games
-### Most work in this library is done to preprocess the Fog preprocessor language.
+### Most work in this library is done to handle the Fog preprocessor language.
 ### It can be used to patch functions and classes without the overhead of runtime patching and sideloading.
 
 * Installs mods with a sophisticated multi-threaded implementation that respects dependencies.

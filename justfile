@@ -63,6 +63,10 @@ release: bind
   @cp .out/wrap/python/haze_mod_lib.py .out/lib/python/
   @cp zig-out/bin/haze_mod_lib_python.dll .out/lib/python/_haze_mod_lib.pyd
 
+  @#PACKAGE
+  @[ -d .out/package/ ] || mkdir -p .out/package/
+  @./zip .out/lib/ .out/package/hazemodlib.zip
+
 test-c: release
   @[ -d .out/c/test/ ] || mkdir -p .out/c/test/
   @cp .out/lib/c/haze_mod_lib.h test/c/include/
@@ -89,4 +93,4 @@ test-cs: release
   @cp .out/lib/csharp/HazeModLib_CS.dll test/cs/lib/
   @cp .out/lib/csharp/HazeModLib.dll test/cs/lib/
   @dotnet build test/cs/test.csproj -c Release
-  ./test/cs/bin/Release/net10.0/test.exe
+  @./test/cs/bin/Release/net10.0/test.exe
