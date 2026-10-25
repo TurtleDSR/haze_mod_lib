@@ -82,7 +82,7 @@ pub const Mod = struct {
                             m.properties.author = "Unknown";
                             m.properties.version = "0.0.0";
 
-                            const name_buf = allocator.dupe(u8, std.Io.Dir.path.basename(file[0 .. file.len - 4])) catch return Error.OutOfMemory;
+                            const name_buf = allocator.dupe(u8, std.Io.Dir.path.basename(file[0..std.mem.findLast(u8, file, ".") orelse file.len])) catch return Error.OutOfMemory;
                             m.properties.name = name_buf;
 
                             const id_buf = std.mem.concat(allocator, u8, &.{ "com.unknown.", name_buf }) catch return Error.OutOfMemory;
