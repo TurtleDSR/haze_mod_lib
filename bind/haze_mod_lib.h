@@ -39,6 +39,13 @@ Handle for a mod instance
 */
 typedef struct mod_t mod;
 /*
+enum for mod format
+*/
+typedef enum modformat_t {
+  hazemod = 0,
+  zip = 1,
+} modformat;
+/*
 handle for mod properties
 */
 typedef struct modproperties_t {
@@ -47,6 +54,8 @@ typedef struct modproperties_t {
   char* id;
   char* version;
   char* source;
+  char* path;
+  modformat format;
   char** soft_dependencies;
   unsigned long long soft_dependency_count;
   char** dependencies;

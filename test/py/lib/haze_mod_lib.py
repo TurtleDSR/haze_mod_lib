@@ -87,6 +87,8 @@ class Mod(object):
 
 # Register Mod in _haze_mod_lib:
 _haze_mod_lib.Mod_swigregister(Mod)
+hazemod = _haze_mod_lib.hazemod
+zip = _haze_mod_lib.zip
 class ModProperties(object):
     thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
 
@@ -98,6 +100,8 @@ class ModProperties(object):
     id = property(_haze_mod_lib.ModProperties_id_get, _haze_mod_lib.ModProperties_id_set)
     version = property(_haze_mod_lib.ModProperties_version_get, _haze_mod_lib.ModProperties_version_set)
     source = property(_haze_mod_lib.ModProperties_source_get, _haze_mod_lib.ModProperties_source_set)
+    path = property(_haze_mod_lib.ModProperties_path_get, _haze_mod_lib.ModProperties_path_set)
+    format = property(_haze_mod_lib.ModProperties_format_get, _haze_mod_lib.ModProperties_format_set)
     soft_dependencies = property(_haze_mod_lib.ModProperties_soft_dependencies_get, _haze_mod_lib.ModProperties_soft_dependencies_set)
     soft_dependency_count = property(_haze_mod_lib.ModProperties_soft_dependency_count_get, _haze_mod_lib.ModProperties_soft_dependency_count_set)
     dependencies = property(_haze_mod_lib.ModProperties_dependencies_get, _haze_mod_lib.ModProperties_dependencies_set)

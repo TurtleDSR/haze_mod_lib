@@ -9,6 +9,11 @@ pub const modlib = opaque {};
 /// Handle for a mod instance
 pub const mod = opaque {};
 
+pub const mod_format = enum(c_int) {
+    hazemod = 0,
+    zip = 1,
+};
+
 /// Mod properties struct
 pub const mod_properties = extern struct {
     author: [*c]const u8 = null,
@@ -16,6 +21,8 @@ pub const mod_properties = extern struct {
     id: [*c]const u8 = null,
     version: [*c]const u8 = null,
     source: [*c]const u8 = null,
+    path: [*c]const u8 = null,
+    format: mod_format = .hazemod,
     soft_dependencies: ?[*][*c]const u8 = null,
     soft_dependency_count: c_ulonglong = 0,
     dependencies: ?[*][*c]const u8 = null,
@@ -156,7 +163,7 @@ export fn modlib_mod_load(file: [*c]const u8, err: ?*c_int) callconv(.c) ?*mod {
 export fn modlib_mod_getproperties(handle: *mod, err: ?*c_int) callconv(.c) ?*mod_properties {
     const ptr: *lib.Mod = @ptrCast(@alignCast(handle));
 
-    return getPropertiesSafe(ptr.properties) catch |e| {
+    return getPropertiesSafe(ptr.*) catch |e| {
         if (err) |errptr| errptr.* = @intFromError(e);
         return null;
     };
@@ -220,8 +227,10 @@ export fn modlib_getErrorMessageFromCode(code: c_int) [*c]const u8 {
 }
 
 //helper
-fn getPropertiesSafe(base_prop: lib.ModProperties) !*mod_properties {
+fn getPropertiesSafe(base_mod: lib.Mod) !*mod_properties {
     const allocator = std.heap.c_allocator;
+    
+    const base_prop = base_mod.properties;
 
     const author = try allocator.dupeSentinel(u8, base_prop.author, 0);
     errdefer allocator.free(author);
@@ -237,6 +246,14 @@ fn getPropertiesSafe(base_prop: lib.ModProperties) !*mod_properties {
 
     const source = try allocator.dupeSentinel(u8, base_prop.source, 0);
     errdefer allocator.free(source);
+
+    const path = try allocator.dupeSentinel(u8, base_mod.path, 0);
+    errdefer allocator.free(path);
+
+    const format = switch (base_mod.format) {
+        lib.ModFormat.HAZEMOD => mod_format.hazemod,
+        lib.ModFormat.ZIP => mod_format.zip,
+    };
 
     var dep_ptrs: ?[*][*c]const u8 = null;
     var dep_count: usize = 0;
@@ -285,6 +302,8 @@ fn getPropertiesSafe(base_prop: lib.ModProperties) !*mod_properties {
         .id = id,
         .version = version,
         .source = source,
+        .path = path,
+        .format = format,
         .soft_dependencies = soft_dep_ptrs,
         .soft_dependency_count = soft_dep_count,
         .dependencies = dep_ptrs,

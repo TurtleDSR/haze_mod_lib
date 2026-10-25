@@ -23,11 +23,6 @@ pub const Mod = struct {
 
     /// Properties of the mod (name, author, etc.)
     properties: ModProperties = .{},
-
-    /// **Note:**
-    ///
-    /// This field is intended to be used only internally.
-    _dependents: ModList = .empty,
     /// **Note:**
     ///
     /// This field is intended to be used only internally.
@@ -36,7 +31,6 @@ pub const Mod = struct {
     ///
     /// This field is intended to be used only internally.
     _parsed_properties: ?std.json.Parsed(ModProperties) = null,
-
     /// Load a mod file into a mod handle.8
     ///
     /// **Parameters:**

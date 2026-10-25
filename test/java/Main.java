@@ -9,7 +9,7 @@ public class Main {
       Mod mod = new Mod("../../../test/static/mods/test.hazemod");
 
       ModProperties properties = mod.getProperties();
-      if(!properties.getAuthor().equals("TurtleDSR")) {
+      if(properties.getFormat() != ModFormat.hazemod) {
         throw new Exception("Invalid Properties");
       }
 

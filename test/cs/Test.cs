@@ -7,7 +7,7 @@ class Test {
       Mod mod = new("test/static/mods/test.hazemod");
 
       ModProperties properties = mod.GetProperties();
-      if(!properties.author.Equals("TurtleDSR")) {
+      if(properties.format != ModFormat.hazemod) {
         throw new Exception("Invalid Properties");
       }
 

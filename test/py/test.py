@@ -5,7 +5,7 @@ try:
   mod = modlib.Mod("test/static/mods/test.hazemod")
   properties: modlib.ModProperties = mod.get_properties()
 
-  if(properties.author != "TurtleDSR"):
+  if(properties.format != modlib.hazemod):
     raise Exception("invalid properties")
 
   context.queue_mod(mod)

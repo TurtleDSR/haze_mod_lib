@@ -1,5 +1,7 @@
 %include "exception.i"
 
+%rename(ModFormat) modformat;
+
 #ifdef SWIGJAVA
 %include "bindings/java.i"
 #endif
