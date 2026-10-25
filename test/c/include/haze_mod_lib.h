@@ -38,7 +38,21 @@ typedef struct modlib_t modlib;
 Handle for a mod instance
 */
 typedef struct mod_t mod;
-/* 
+/*
+handle for mod properties
+*/
+typedef struct modproperties_t {
+  char* author;
+  char* name;
+  char* id;
+  char* version;
+  char* source;
+  char** soft_dependencies;
+  unsigned long long soft_dependency_count;
+  char** dependencies;
+  unsigned long long dependency_count;
+} modproperties;
+/*
 Initializes a ModLib handle.
 
 \param game_path path to the game directory.
@@ -90,6 +104,20 @@ DLLIMPORT mod* modlib_mod_load(const char* file, int* err);
 Destroys a mod handle
 */
 DLLIMPORT void modlib_mod_deinit(mod* handle);
+/*
+Gets properties from a mod handle
+
+\param handle mod handle to get properties from
+\param err optional pointer to error field
+
+\returns
+properties handle containing properties of input mod.
+*/
+DLLIMPORT modproperties* modlib_mod_getproperties(mod* handle, int* err);
+/*
+Frees resources from a properties handle
+*/
+DLLIMPORT void modlib_modproperties_deinit(modproperties* handle);
 /*
 Returns error string
 */

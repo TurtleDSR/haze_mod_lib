@@ -3,10 +3,16 @@ using Com.Turtledsr.HazeModLib;
 class Test {
   static void Main() {
     try {
-      ModLib Context = new("test/static/sandbox");
-      Mod TestMod = new("test/static/mods/test.hazemod");
-      Context.QueueMod(TestMod);
-      Context.InstallMods();
+      ModLib context = new("test/static/sandbox");
+      Mod mod = new("test/static/mods/test.hazemod");
+
+      ModProperties properties = mod.GetProperties();
+      if(!properties.author.Equals("TurtleDSR")) {
+        throw new Exception("Invalid Properties");
+      }
+
+      context.QueueMod(mod);
+      context.InstallMods();
 
       Console.WriteLine("Success");
     } catch(Exception e) {

@@ -12,15 +12,19 @@ bind: build
   @[ -d .out/wrap/python/ ] || mkdir -p .out/wrap/python/
   @[ -d .out/wrap/csharp/ ] || mkdir -p .out/wrap/csharp/
 
+  @#C
   @cp zig-out/lib/haze_mod_lib_static.lib bind/include/haze_mod_lib.lib
   @cp zig-pkg/zip-1.0.4-17qA5UcTHwB6CVYazmkLoacjgUas9NAwGmxVtmy7wEBx/lib/zip_c.lib bind/include/zip_c.lib
 
+  @#JAVA
   @swig -java -c++ -package com.turtledsr.hazemodlib -outdir .out/wrap/java/com/turtledsr/hazemodlib -o .out/wrap/java/haze_mod_lib_wrap.cxx bind/haze_mod_lib.i
   @rm .out/wrap/java/com/turtledsr/hazemodlib/HazeModLib.java
 
+  @#CSHARP
   @swig -csharp -c++ -namespace Com.Turtledsr.HazeModLib -outdir .out/wrap/csharp -o .out/wrap/csharp/haze_mod_lib_wrap.cxx bind/haze_mod_lib.i
   @rm .out/wrap/csharp/HazeModLib.cs
 
+  @#PYTHON
   @swig -python -c++ -outdir .out/wrap/python -o .out/wrap/python/haze_mod_lib_wrap.cxx bind/haze_mod_lib.i
 
 lint: build

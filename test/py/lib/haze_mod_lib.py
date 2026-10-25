@@ -82,6 +82,28 @@ class Mod(object):
         _haze_mod_lib.Mod_swiginit(self, _haze_mod_lib.new_Mod(file))
     __swig_destroy__ = _haze_mod_lib.delete_Mod
 
+    def get_properties(self):
+        return _haze_mod_lib.Mod_get_properties(self)
+
 # Register Mod in _haze_mod_lib:
 _haze_mod_lib.Mod_swigregister(Mod)
+class ModProperties(object):
+    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
+
+    def __init__(self, *args, **kwargs):
+        raise AttributeError("No constructor defined")
+    __repr__ = _swig_repr
+    author = property(_haze_mod_lib.ModProperties_author_get, _haze_mod_lib.ModProperties_author_set)
+    name = property(_haze_mod_lib.ModProperties_name_get, _haze_mod_lib.ModProperties_name_set)
+    id = property(_haze_mod_lib.ModProperties_id_get, _haze_mod_lib.ModProperties_id_set)
+    version = property(_haze_mod_lib.ModProperties_version_get, _haze_mod_lib.ModProperties_version_set)
+    source = property(_haze_mod_lib.ModProperties_source_get, _haze_mod_lib.ModProperties_source_set)
+    soft_dependencies = property(_haze_mod_lib.ModProperties_soft_dependencies_get, _haze_mod_lib.ModProperties_soft_dependencies_set)
+    soft_dependency_count = property(_haze_mod_lib.ModProperties_soft_dependency_count_get, _haze_mod_lib.ModProperties_soft_dependency_count_set)
+    dependencies = property(_haze_mod_lib.ModProperties_dependencies_get, _haze_mod_lib.ModProperties_dependencies_set)
+    dependency_count = property(_haze_mod_lib.ModProperties_dependency_count_get, _haze_mod_lib.ModProperties_dependency_count_set)
+    __swig_destroy__ = _haze_mod_lib.delete_ModProperties
+
+# Register ModProperties in _haze_mod_lib:
+_haze_mod_lib.ModProperties_swigregister(ModProperties)
 

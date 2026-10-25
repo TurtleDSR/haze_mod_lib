@@ -9,6 +9,19 @@ pub const modlib = opaque {};
 /// Handle for a mod instance
 pub const mod = opaque {};
 
+/// Mod properties struct
+pub const mod_properties = extern struct {
+    author: [*c]const u8 = null,
+    name: [*c]const u8 = null,
+    id: [*c]const u8 = null,
+    version: [*c]const u8 = null,
+    source: [*c]const u8 = null,
+    soft_dependencies: ?[*][*c]const u8 = null,
+    soft_dependency_count: c_ulonglong = 0,
+    dependencies: ?[*][*c]const u8 = null,
+    dependency_count: c_ulonglong = 0,
+};
+
 /// Initializes a ModLib handle.
 ///
 /// **Parameters:**
@@ -42,6 +55,7 @@ export fn modlib_init(game_path: [*c]const u8, err: ?*c_int) callconv(.c) ?*modl
 
         return @ptrCast(@alignCast(handle_ptr));
     } else {
+        if (err) |errptr| errptr.* = @intFromError(Error.FileNotFound);
         return null;
     }
 }
@@ -133,8 +147,46 @@ export fn modlib_mod_load(file: [*c]const u8, err: ?*c_int) callconv(.c) ?*mod {
 
         return @ptrCast(@alignCast(handle_ptr));
     } else {
+        if (err) |errptr| errptr.* = @intFromError(Error.FileNotFound);
         return null;
     }
+}
+
+/// gets and returns the properties from a mod handle
+export fn modlib_mod_getproperties(handle: *mod, err: ?*c_int) callconv(.c) ?*mod_properties {
+    const ptr: *lib.Mod = @ptrCast(@alignCast(handle));
+
+    return getPropertiesSafe(ptr.properties) catch |e| {
+        if (err) |errptr| errptr.* = @intFromError(e);
+        return null;
+    };
+}
+
+/// destroys and frees all memory taken by the given property handle.
+export fn modlib_modproperties_deinit(handle: *mod_properties) callconv(.c) void {
+    if(handle.author) |ptr| std.heap.c_allocator.free(std.mem.span(ptr));
+    if(handle.name) |ptr| std.heap.c_allocator.free(std.mem.span(ptr));
+    if(handle.id) |ptr| std.heap.c_allocator.free(std.mem.span(ptr));
+    if(handle.version) |ptr| std.heap.c_allocator.free(std.mem.span(ptr));
+    if(handle.source) |ptr|std.heap.c_allocator.free(std.mem.span(ptr));
+
+    if (handle.soft_dependencies) |deps| {
+        const slice = deps[0..handle.soft_dependency_count];
+        for (slice) |dep| {
+            if (dep) |dptr| std.heap.c_allocator.free(std.mem.span(dptr));
+        }
+        std.heap.c_allocator.free(slice);
+    }
+
+    if (handle.dependencies) |deps| {
+        const slice = deps[0..handle.dependency_count];
+        for (slice) |dep| {
+            if (dep) |dptr| std.heap.c_allocator.free(std.mem.span(dptr));
+        }
+        std.heap.c_allocator.free(slice);
+    }
+
+    std.heap.c_allocator.destroy(handle);
 }
 
 /// Destroys a ModLib handle
@@ -165,4 +217,79 @@ export fn modlib_getErrorMessageFromCode(code: c_int) [*c]const u8 {
         Error.PropertiesParseError => "Properties Parse Exception",
         else => "Unknown Error Occured",
     };
+}
+
+//helper
+fn getPropertiesSafe(base_prop: lib.ModProperties) !*mod_properties {
+    const allocator = std.heap.c_allocator;
+
+    const author = try allocator.dupeSentinel(u8, base_prop.author, 0);
+    errdefer allocator.free(author);
+
+    const name = try allocator.dupeSentinel(u8, base_prop.name, 0);
+    errdefer allocator.free(name);
+
+    const id = try allocator.dupeSentinel(u8, base_prop.id, 0);
+    errdefer allocator.free(id);
+
+    const version = try allocator.dupeSentinel(u8, base_prop.version, 0);
+    errdefer allocator.free(version);
+
+    const source = try allocator.dupeSentinel(u8, base_prop.source, 0);
+    errdefer allocator.free(source);
+
+    var dep_ptrs: ?[*][*c]const u8 = null;
+    var dep_count: usize = 0;
+    if (base_prop.dependencies) |deps| {
+        dep_count = deps.len;
+        var arr = try allocator.alloc([*c]const u8, dep_count);
+        errdefer allocator.free(arr);
+
+        var success_count: usize = 0;
+        errdefer {
+            for (0..success_count) |i| allocator.free(std.mem.span(arr[i]));
+        }
+
+        for (deps, 0..) |dep, i| {
+            arr[i] = try allocator.dupeSentinel(u8, dep, 0);
+            success_count += 1;
+        }
+        dep_ptrs = arr.ptr;
+    }
+
+    var soft_dep_ptrs: ?[*][*c]const u8 = null;
+    var soft_dep_count: usize = 0;
+    if (base_prop.soft_dependencies) |deps| {
+        soft_dep_count = deps.len;
+        var arr = try allocator.alloc([*c]const u8, soft_dep_count);
+        errdefer allocator.free(arr);
+
+        var success_count: usize = 0;
+        errdefer {
+            for (0..success_count) |i| allocator.free(std.mem.span(arr[i]));
+        }
+
+        for (deps, 0..) |dep, i| {
+            arr[i] = try allocator.dupeSentinel(u8, dep, 0);
+            success_count += 1;
+        }
+        soft_dep_ptrs = arr.ptr;
+    }
+
+    const out = try allocator.create(mod_properties);
+    errdefer allocator.destroy(out); // Clean up container if anything below fails (though nothing else does here)
+
+    out.* = .{
+        .author = author,
+        .name = name,
+        .id = id,
+        .version = version,
+        .source = source,
+        .soft_dependencies = soft_dep_ptrs,
+        .soft_dependency_count = soft_dep_count,
+        .dependencies = dep_ptrs,
+        .dependency_count = dep_count,
+    };
+
+    return out;
 }

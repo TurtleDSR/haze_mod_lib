@@ -11,6 +11,15 @@
   }
 }
 
+%rename(ModProperties) modproperties_t;
+%extend modproperties_t {
+  ~modproperties_t() { //destructor
+    if($self) {
+      modlib_modproperties_deinit($self);
+    }
+  }
+}
+
 %rename(Mod) mod_t;
 %extend mod_t {
   mod_t(const char* file) { //constructor
@@ -28,6 +37,17 @@
     if($self) {
       modlib_mod_deinit($self);
     }
+  }
+
+  modproperties_t* get_properties() {
+    int err = 0;
+    struct modproperties_t* handle = modlib_mod_getproperties($self, &err);
+
+    if(err != 0) {
+      throw std::runtime_error(modlib_getErrorMessageFromCode(err));
+    }
+
+    return handle;
   }
 }
 
@@ -83,3 +103,5 @@
 %ignore modlib_installMods;
 %ignore modlib_mod_load;
 %ignore modlib_mod_deinit;
+%ignore modlib_mod_getproperties;
+%ignore modlib_modproperties_deinit;

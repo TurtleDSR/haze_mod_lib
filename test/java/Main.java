@@ -8,6 +8,11 @@ public class Main {
       ModLib context = new ModLib("../../../test/static/sandbox/");
       Mod mod = new Mod("../../../test/static/mods/test.hazemod");
 
+      ModProperties properties = mod.getProperties();
+      if(!properties.getAuthor().equals("TurtleDSR")) {
+        throw new Exception("Invalid Properties");
+      }
+
       context.queueMod(mod);
       context.installMods();
 

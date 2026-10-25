@@ -3,6 +3,10 @@ try:
   context = modlib.ModLib("test/static/sandbox/")
 
   mod = modlib.Mod("test/static/mods/test.hazemod")
+  properties: modlib.ModProperties = mod.get_properties()
+
+  if(properties.author != "TurtleDSR"):
+    raise Exception("invalid properties")
 
   context.queue_mod(mod)
   context.install_mods()

@@ -22,9 +22,11 @@
 
 %nodefaultctor modlib_t;
 %nodefaultctor mod_t;
+%nodefaultctor modproperties_t;
 
 %nodefaultdtor modlib_t;
 %nodefaultdtor mod_t;
+%nodefaultdtor modproperties_t;
 
 struct modlib_t {};
 struct mod_t {};
