@@ -2,6 +2,13 @@
 
 %module HazeModLib
 
+%include <std_vector.i>
+%include <std_string.i>
+
+namespace std {
+  %template(StringList) vector<string>;
+}
+
 %pragma(csharp) imclassclassmodifiers="internal class"
 
 %exception {
@@ -19,6 +26,32 @@
     if($self) {
       modlib_modproperties_deinit($self);
     }
+  }
+
+  std::vector<std::string> GetDependencies() {
+    std::vector<std::string> vec;
+    if ($self->dependencies && $self->dependency_count > 0) {
+      vec.reserve($self->dependency_count);
+      for (unsigned long long i = 0; i < $self->dependency_count; ++i) {
+        if ($self->dependencies[i]) {
+          vec.push_back($self->dependencies[i]);
+        }
+      }
+    }
+    return vec;
+  }
+
+  std::vector<std::string> GetSoftDependencies() {
+    std::vector<std::string> vec;
+    if ($self->soft_dependencies && $self->soft_dependency_count > 0) {
+      vec.reserve($self->soft_dependency_count);
+      for (unsigned long long i = 0; i < $self->soft_dependency_count; ++i) {
+        if ($self->soft_dependencies[i]) {
+          vec.push_back($self->soft_dependencies[i]);
+        }
+      }
+    }
+    return vec;
   }
 }
 
@@ -97,13 +130,3 @@
     }
   }
 }
-
-%ignore modlib_init;
-%ignore modlib_deinit;
-%ignore modlib_getErrorMessageFromCode;
-%ignore modlib_queueMod;
-%ignore modlib_installMods;
-%ignore modlib_mod_load;
-%ignore modlib_mod_deinit;
-%ignore modlib_mod_getproperties;
-%ignore modlib_modproperties_deinit;

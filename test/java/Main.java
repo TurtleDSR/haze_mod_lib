@@ -13,6 +13,10 @@ public class Main {
         throw new Exception("Invalid Properties");
       }
 
+      if(properties.getDependencies().size() != 0) {
+        throw new Exception("Invalid Properties");
+      }
+
       context.queueMod(mod);
       context.installMods();
 

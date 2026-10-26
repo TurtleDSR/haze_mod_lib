@@ -33,4 +33,19 @@
 struct modlib_t {};
 struct mod_t {};
 
+%ignore modlib_init;
+%ignore modlib_deinit;
+%ignore modlib_getErrorMessageFromCode;
+%ignore modlib_queueMod;
+%ignore modlib_installMods;
+%ignore modlib_mod_load;
+%ignore modlib_mod_deinit;
+%ignore modlib_mod_getproperties;
+%ignore modlib_modproperties_deinit;
+
+%ignore modproperties_t::soft_dependencies;
+%ignore modproperties_t::soft_dependency_count;
+%ignore modproperties_t::dependencies;
+%ignore modproperties_t::dependency_count;
+
 %include "haze_mod_lib.h"

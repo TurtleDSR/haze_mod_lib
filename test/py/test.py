@@ -8,6 +8,9 @@ try:
   if(properties.format != modlib.hazemod):
     raise Exception("invalid properties")
 
+  if(len(properties.get_dependencies()) != 0):
+    raise Exception("invalid properties")
+
   context.queue_mod(mod)
   context.install_mods()
 

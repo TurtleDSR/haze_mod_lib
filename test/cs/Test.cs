@@ -11,6 +11,10 @@ class Test {
         throw new Exception("Invalid Properties");
       }
 
+      if(properties.GetDependencies().Count != 0) {
+        throw new Exception("Invalid Properties");
+      }
+
       context.QueueMod(mod);
       context.InstallMods();
 

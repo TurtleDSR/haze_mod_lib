@@ -58,6 +58,171 @@ class _SwigNonDynamicMeta(type):
     __setattr__ = _swig_setattr_nondynamic_class_variable(type.__setattr__)
 
 
+class SwigPyIterator(object):
+    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
+
+    def __init__(self, *args, **kwargs):
+        raise AttributeError("No constructor defined - class is abstract")
+    __repr__ = _swig_repr
+    __swig_destroy__ = _haze_mod_lib.delete_SwigPyIterator
+
+    def value(self):
+        return _haze_mod_lib.SwigPyIterator_value(self)
+
+    def incr(self, n=1):
+        return _haze_mod_lib.SwigPyIterator_incr(self, n)
+
+    def decr(self, n=1):
+        return _haze_mod_lib.SwigPyIterator_decr(self, n)
+
+    def distance(self, x):
+        return _haze_mod_lib.SwigPyIterator_distance(self, x)
+
+    def equal(self, x):
+        return _haze_mod_lib.SwigPyIterator_equal(self, x)
+
+    def copy(self):
+        return _haze_mod_lib.SwigPyIterator_copy(self)
+
+    def next(self):
+        return _haze_mod_lib.SwigPyIterator_next(self)
+
+    def __next__(self):
+        return _haze_mod_lib.SwigPyIterator___next__(self)
+
+    def previous(self):
+        return _haze_mod_lib.SwigPyIterator_previous(self)
+
+    def advance(self, n):
+        return _haze_mod_lib.SwigPyIterator_advance(self, n)
+
+    def __eq__(self, x):
+        return _haze_mod_lib.SwigPyIterator___eq__(self, x)
+
+    def __ne__(self, x):
+        return _haze_mod_lib.SwigPyIterator___ne__(self, x)
+
+    def __iadd__(self, n):
+        return _haze_mod_lib.SwigPyIterator___iadd__(self, n)
+
+    def __isub__(self, n):
+        return _haze_mod_lib.SwigPyIterator___isub__(self, n)
+
+    def __add__(self, n):
+        return _haze_mod_lib.SwigPyIterator___add__(self, n)
+
+    def __sub__(self, *args):
+        return _haze_mod_lib.SwigPyIterator___sub__(self, *args)
+    def __iter__(self):
+        return self
+
+# Register SwigPyIterator in _haze_mod_lib:
+_haze_mod_lib.SwigPyIterator_swigregister(SwigPyIterator)
+class StringVector(object):
+    thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
+    __repr__ = _swig_repr
+
+    def iterator(self):
+        return _haze_mod_lib.StringVector_iterator(self)
+    def __iter__(self):
+        return self.iterator()
+
+    def __nonzero__(self):
+        return _haze_mod_lib.StringVector___nonzero__(self)
+
+    def __bool__(self):
+        return _haze_mod_lib.StringVector___bool__(self)
+
+    def __len__(self):
+        return _haze_mod_lib.StringVector___len__(self)
+
+    def __getslice__(self, i, j):
+        return _haze_mod_lib.StringVector___getslice__(self, i, j)
+
+    def __setslice__(self, *args):
+        return _haze_mod_lib.StringVector___setslice__(self, *args)
+
+    def __delslice__(self, i, j):
+        return _haze_mod_lib.StringVector___delslice__(self, i, j)
+
+    def __delitem__(self, *args):
+        return _haze_mod_lib.StringVector___delitem__(self, *args)
+
+    def __getitem__(self, *args):
+        return _haze_mod_lib.StringVector___getitem__(self, *args)
+
+    def __setitem__(self, *args):
+        return _haze_mod_lib.StringVector___setitem__(self, *args)
+
+    def pop(self):
+        return _haze_mod_lib.StringVector_pop(self)
+
+    def append(self, x):
+        return _haze_mod_lib.StringVector_append(self, x)
+
+    def empty(self):
+        return _haze_mod_lib.StringVector_empty(self)
+
+    def size(self):
+        return _haze_mod_lib.StringVector_size(self)
+
+    def swap(self, v):
+        return _haze_mod_lib.StringVector_swap(self, v)
+
+    def begin(self):
+        return _haze_mod_lib.StringVector_begin(self)
+
+    def end(self):
+        return _haze_mod_lib.StringVector_end(self)
+
+    def rbegin(self):
+        return _haze_mod_lib.StringVector_rbegin(self)
+
+    def rend(self):
+        return _haze_mod_lib.StringVector_rend(self)
+
+    def clear(self):
+        return _haze_mod_lib.StringVector_clear(self)
+
+    def get_allocator(self):
+        return _haze_mod_lib.StringVector_get_allocator(self)
+
+    def pop_back(self):
+        return _haze_mod_lib.StringVector_pop_back(self)
+
+    def erase(self, *args):
+        return _haze_mod_lib.StringVector_erase(self, *args)
+
+    def __init__(self, *args):
+        _haze_mod_lib.StringVector_swiginit(self, _haze_mod_lib.new_StringVector(*args))
+
+    def push_back(self, x):
+        return _haze_mod_lib.StringVector_push_back(self, x)
+
+    def front(self):
+        return _haze_mod_lib.StringVector_front(self)
+
+    def back(self):
+        return _haze_mod_lib.StringVector_back(self)
+
+    def assign(self, n, x):
+        return _haze_mod_lib.StringVector_assign(self, n, x)
+
+    def resize(self, *args):
+        return _haze_mod_lib.StringVector_resize(self, *args)
+
+    def insert(self, *args):
+        return _haze_mod_lib.StringVector_insert(self, *args)
+
+    def reserve(self, n):
+        return _haze_mod_lib.StringVector_reserve(self, n)
+
+    def capacity(self):
+        return _haze_mod_lib.StringVector_capacity(self)
+    __swig_destroy__ = _haze_mod_lib.delete_StringVector
+
+# Register StringVector in _haze_mod_lib:
+_haze_mod_lib.StringVector_swigregister(StringVector)
 class ModLib(object):
     thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
     __repr__ = _swig_repr
@@ -102,11 +267,13 @@ class ModProperties(object):
     source = property(_haze_mod_lib.ModProperties_source_get, _haze_mod_lib.ModProperties_source_set)
     path = property(_haze_mod_lib.ModProperties_path_get, _haze_mod_lib.ModProperties_path_set)
     format = property(_haze_mod_lib.ModProperties_format_get, _haze_mod_lib.ModProperties_format_set)
-    soft_dependencies = property(_haze_mod_lib.ModProperties_soft_dependencies_get, _haze_mod_lib.ModProperties_soft_dependencies_set)
-    soft_dependency_count = property(_haze_mod_lib.ModProperties_soft_dependency_count_get, _haze_mod_lib.ModProperties_soft_dependency_count_set)
-    dependencies = property(_haze_mod_lib.ModProperties_dependencies_get, _haze_mod_lib.ModProperties_dependencies_set)
-    dependency_count = property(_haze_mod_lib.ModProperties_dependency_count_get, _haze_mod_lib.ModProperties_dependency_count_set)
     __swig_destroy__ = _haze_mod_lib.delete_ModProperties
+
+    def get_dependencies(self):
+        return _haze_mod_lib.ModProperties_get_dependencies(self)
+
+    def get_soft_dependencies(self):
+        return _haze_mod_lib.ModProperties_get_soft_dependencies(self)
 
 # Register ModProperties in _haze_mod_lib:
 _haze_mod_lib.ModProperties_swigregister(ModProperties)
