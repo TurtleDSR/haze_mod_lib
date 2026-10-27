@@ -6,12 +6,16 @@
 %include "bindings/java.i"
 #endif
 
+#ifdef SWIGCSHARP
+%include "bindings/csharp.i"
+#endif
+
 #ifdef SWIGPYTHON
 %include "bindings/python.i"
 #endif
 
-#ifdef SWIGCSHARP
-%include "bindings/csharp.i"
+#ifdef SWIGGO
+%include "bindings/go.i"
 #endif
 
 %{

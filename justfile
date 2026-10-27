@@ -9,8 +9,9 @@ bind: build
   @rm -rf .out/wrap/
 
   @[ -d .out/wrap/java/com/turtledsr/hazemodlib ] || mkdir -p .out/wrap/java/com/turtledsr/hazemodlib
-  @[ -d .out/wrap/python/ ] || mkdir -p .out/wrap/python/
   @[ -d .out/wrap/csharp/ ] || mkdir -p .out/wrap/csharp/
+  @[ -d .out/wrap/python/ ] || mkdir -p .out/wrap/python/
+  @[ -d .out/wrap/go/ ] || mkdir -p .out/wrap/go/
 
   @#C
   @cp zig-out/lib/haze_mod_lib_static.lib bind/include/haze_mod_lib.lib
@@ -26,6 +27,9 @@ bind: build
 
   @#PYTHON
   @swig -python -c++ -outdir .out/wrap/python -o .out/wrap/python/haze_mod_lib_wrap.cxx bind/haze_mod_lib.i
+
+  @#GO
+  @swig -go -c++ -cgo -package hazemodlib -outdir .out/wrap/go -o .out/wrap/go/haze_mod_lib_wrap.cxx bind/haze_mod_lib.i
 
 lint: build
   @clear
@@ -66,6 +70,13 @@ release: bind
   @[ -d .out/lib/python/ ] || mkdir -p .out/lib/python/
   @cp .out/wrap/python/haze_mod_lib.py .out/lib/python/
   @cp zig-out/bin/haze_mod_lib_python.dll .out/lib/python/_haze_mod_lib.pyd
+
+  @#GO
+  @[ -d .out/lib/go/ ] || mkdir -p .out/lib/go/
+  @cp .out/wrap/go/hazemodlib.go .out/lib/go/
+  @cp zig-out/bin/haze_mod_lib_go.dll .out/lib/go/haze_mod_lib.dll
+  @cp zig-out/lib/haze_mod_lib_go.lib .out/lib/go/haze_mod_lib.lib
+  @cp -r bind/go/* .out/lib/go/
 
   @#PACKAGE
   @[ -d .out/package/ ] || mkdir -p .out/package/

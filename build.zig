@@ -146,7 +146,31 @@ pub fn build(b: *std.Build) !void {
 
     const python_bind_artifact = b.addInstallArtifact(python_dll, .{});
 
+    const go_bind_module = b.createModule(.{
+        .root_source_file = b.path("bind/bind.zig"),
+        .link_libcpp = true,
+        .target = target,
+        .optimize = optimise,
+    });
+    go_bind_module.addImport("modlib", root_module);
+
+    go_bind_module.addCSourceFile(.{
+        .file = b.path(".out/wrap/csharp/haze_mod_lib_wrap.cxx"),
+        .flags = &.{ "-std=c++23" },
+    });
+
+    go_bind_module.addIncludePath(b.path("bind/"));
+
+    const go_dll = b.addLibrary(.{
+        .name = "haze_mod_lib_go",
+        .linkage = .dynamic,
+        .root_module = go_bind_module,
+    });
+
+    const go_bind_artifact = b.addInstallArtifact(go_dll, .{});
+
     release_step.dependOn(&java_bind_artifact.step);
     release_step.dependOn(&csharp_bind_artifact.step);
     release_step.dependOn(&python_bind_artifact.step);
+    release_step.dependOn(&go_bind_artifact.step);
 }
