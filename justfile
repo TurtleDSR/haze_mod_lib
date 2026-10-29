@@ -69,7 +69,10 @@ release: bind
   @cp zig-out/bin/haze_mod_lib_python.dll .out/lib/python/_haze_mod_lib.pyd
 
   @#GO
+  @[ -d .out/lib/go/ ] || mkdir -p .out/lib/go/
   @[ -d go/ ] || mkdir -p go/
+
+  @cp zig-out/bin/haze_mod_lib_go.dll .out/lib/go/
 
   @cp zig-out/bin/haze_mod_lib_go.dll go/
   @cp zig-out/lib/haze_mod_lib_go.lib go/

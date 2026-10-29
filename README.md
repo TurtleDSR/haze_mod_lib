@@ -16,6 +16,7 @@ zig fetch --save git+https://github.com/TurtleDSR/haze_mod_lib/
 ```go
 import "github.com/turtledsr/haze_mod_lib/go"
 ```
+also include the haze_mod_lib_go.dll found in [releases](https://github.com/TurtleDSR/haze_mod_lib/releases) in your binary folder
   * C, Java, C#, Python: 
 Necessary files can be found in [releases](https://github.com/TurtleDSR/haze_mod_lib/releases)
 
