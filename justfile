@@ -28,9 +28,6 @@ bind: build
   @#PYTHON
   @swig -python -c++ -outdir .out/wrap/python -o .out/wrap/python/haze_mod_lib_wrap.cxx bind/haze_mod_lib.i
 
-  @#GO
-  @swig -go -c++ -cgo -package hazemodlib -outdir .out/wrap/go -o .out/wrap/go/haze_mod_lib_wrap.cxx bind/haze_mod_lib.i
-
 lint: build
   @clear
   @zig build lint
@@ -72,11 +69,10 @@ release: bind
   @cp zig-out/bin/haze_mod_lib_python.dll .out/lib/python/_haze_mod_lib.pyd
 
   @#GO
-  @[ -d .out/lib/go/ ] || mkdir -p .out/lib/go/
-  @cp .out/wrap/go/hazemodlib.go .out/lib/go/
-  @cp zig-out/bin/haze_mod_lib_go.dll .out/lib/go/haze_mod_lib.dll
-  @cp zig-out/lib/haze_mod_lib_go.lib .out/lib/go/haze_mod_lib.lib
-  @cp -r bind/go/* .out/lib/go/
+  @[ -d go/ ] || mkdir -p go/
+
+  @cp zig-out/bin/haze_mod_lib_go.dll go/
+  @cp zig-out/lib/haze_mod_lib_go.lib go/
 
   @#PACKAGE
   @[ -d .out/package/ ] || mkdir -p .out/package/
@@ -109,3 +105,7 @@ test-cs: release
   @cp .out/lib/csharp/HazeModLib.dll test/cs/lib/
   @dotnet build test/cs/test.csproj -c Release
   @./test/cs/bin/Release/net10.0/test.exe
+
+test-go: release
+  @cp go/haze_mod_lib_go.dll test/go/
+  @cd test/go/ && go run -race main.go

@@ -9,6 +9,7 @@ pub const modlib = opaque {};
 /// Handle for a mod instance
 pub const mod = opaque {};
 
+// Mod format enum
 pub const mod_format = enum(c_int) {
     hazemod = 0,
     zip = 1,

@@ -3,19 +3,19 @@
 %rename(ModFormat) modformat;
 
 #ifdef SWIGJAVA
-%include "bindings/java.i"
+%include "interface/java.i"
 #endif
 
 #ifdef SWIGCSHARP
-%include "bindings/csharp.i"
+%include "interface/csharp.i"
 #endif
 
 #ifdef SWIGPYTHON
-%include "bindings/python.i"
+%include "interface/python.i"
 #endif
 
 #ifdef SWIGGO
-%include "bindings/go.i"
+%include "interface/go.i"
 #endif
 
 %{

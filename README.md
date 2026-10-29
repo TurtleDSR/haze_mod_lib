@@ -7,9 +7,21 @@
 * Written in Zig.
 * Bindings for C, Java, C#, Go, and Python.
 
+## Usage:
+  * Zig:
+```bash 
+zig fetch --save git+https://github.com/TurtleDSR/haze_mod_lib/
+```
+  * Go:
+```go
+import "github.com/turtledsr/haze_mod_lib/go"
+```
+  * C, Java, C#, Python: 
+Necessary files can be found in [releases](https://github.com/TurtleDSR/haze_mod_lib/releases)
+
 ## Credits:
 * TurtleDSR (All non-external code was written by me)
 * Kuba (External Zip Library) (zig bindings were written by me)
-* Huge credit to the authors of SWIG, it makes generating the bindings from C to Java, C#, Go, and Python possible without a huge headache.
+* Huge credit to the authors of SWIG, it makes generating the bindings from C to Java, C#, and Python possible without a huge headache. (zig to c and c to go were written by hand)
 
 ## [Fog Language Reference](DOCS.md)
