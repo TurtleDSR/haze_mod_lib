@@ -80,10 +80,15 @@ pub fn build(b: *std.Build) !void {
 
     java_bind_module.addCSourceFile(.{
         .file = b.path(".out/wrap/java/haze_mod_lib_wrap.cxx"),
-        .flags = &.{ "-std=c++23" },
+        .flags = &.{ "-std=c++23", "-DJNICALL=" },
     });
 
-    java_bind_module.addIncludePath(b.path("bind/include/jni/"));
+    const os_tag = target.result.os.tag;
+    if (os_tag == .windows) {
+        java_bind_module.addIncludePath(b.path("bind/include/jni/win32/"));
+    } else if (os_tag == .linux) {
+        java_bind_module.addIncludePath(b.path("bind/include/jni/linux/"));
+    }
     java_bind_module.addIncludePath(b.path("bind/"));
 
     const java_dll = b.addLibrary(.{
@@ -131,12 +136,21 @@ pub fn build(b: *std.Build) !void {
     });
 
     python_bind_module.addIncludePath(b.path("bind/"));
-    python_bind_module.addIncludePath(b.path("bind/include/python/headers/"));
-    python_bind_module.addLibraryPath(b.path("bind/include/python/libs/"));
+    if (os_tag == .windows) {
+        python_bind_module.addIncludePath(b.path("bind/include/python/win32/headers/"));
+        python_bind_module.addLibraryPath(b.path("bind/include/python/win32/libs/"));
 
-    python_bind_module.linkSystemLibrary("python314", .{
-        .preferred_link_mode = .static,
-    });
+        python_bind_module.linkSystemLibrary("python314", .{
+            .preferred_link_mode = .static,
+        });
+    } else if (os_tag == .linux) {
+        python_bind_module.addIncludePath(b.path("bind/include/python/linux/headers/"));
+        python_bind_module.addLibraryPath(b.path("bind/include/python/linux/libs/"));
+        
+        python_bind_module.linkSystemLibrary("python3.14", .{
+            .preferred_link_mode = .dynamic,
+        });
+    }
 
     const python_dll = b.addLibrary(.{
         .name = "haze_mod_lib_python",
