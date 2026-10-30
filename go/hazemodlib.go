@@ -1,7 +1,7 @@
 package hazemodlib
 
 /*
-#cgo LDFLAGS: -L${SRCDIR} -lhaze_mod_lib_go
+#cgo LDFLAGS: -L${SRCDIR} -lhaze_mod_lib_go -Wl,-rpath,'$ORIGIN'
 #cgo CFLAGS: -I${SRCDIR}
 #include "haze_mod_lib.h"
 #include <stdlib.h>
