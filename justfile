@@ -1,20 +1,19 @@
 release:
-  just lib x86_64-windows-gnu
-  just lib aarch64-linux-gnu
+  just lib x86_64-windows-gnu ReleaseFast
+  just lib aarch64-linux-gnu ReleaseFast
 
-build target='native':
+build target='native' optimize='Debug':
   @clear
-  @zig build -Dtarget={{target}}
+  @zig build -Dtarget={{target}} -Doptimize={{optimize}}
 
-bind target='native': (build target)
+bind target='native' optimize='Debug': (build target optimize)
   #!/usr/bin/env bash
   rm -rf zig-out/
   rm -rf .out/lib/
   rm -rf .out/wrap/
 
-  zig build bind -Dtarget={{target}}
+  zig build bind -Dtarget={{target}} -Doptimize={{optimize}}
   
-
   [ -d .out/wrap/java/com/turtledsr/hazemodlib ] || mkdir -p .out/wrap/java/com/turtledsr/hazemodlib
   [ -d .out/wrap/csharp/ ] || mkdir -p .out/wrap/csharp/
   [ -d .out/wrap/python/ ] || mkdir -p .out/wrap/python/
@@ -29,8 +28,8 @@ bind target='native': (build target)
     lib_pre="lib"
   fi
 
-  cp "zig-out/lib/${lib_pre}haze_mod_lib_static.$lib_ext" "bind/include/${lib_pre}haze_mod_lib.$lib_ext"
-  cp "zig-pkg/zip-1.1.1-17qA5SeETAARZp54FPuYDDo8xmIyw95VVyVTbSlg8sx7/lib/${lib_pre}zip_c.$lib_ext" "bind/include/${lib_pre}zip_c.$lib_ext"
+  cp "zig-out/lib/${lib_pre}haze_mod_lib_static.$lib_ext" "bind/lib/${lib_pre}haze_mod_lib.$lib_ext"
+  cp "zig-pkg/zip-1.1.1-17qA5bApEwCvnjZPVCa_XoruIfM9Atn_LeXrrSWhuEWT/lib/${lib_pre}zip_c.$lib_ext" "bind/lib/${lib_pre}zip_c.$lib_ext"
 
   #JAVA
   swig -java -c++ -package com.turtledsr.hazemodlib -outdir .out/wrap/java/com/turtledsr/hazemodlib -o .out/wrap/java/haze_mod_lib_wrap.cxx bind/haze_mod_lib.i
@@ -46,11 +45,11 @@ bind target='native': (build target)
 lint: build
   @zig build lint
 
-test: build
+test target='native' optimize='Debug' : (build target optimize)
   @[ -d test/static/sandbox/Script ] || mkdir -p test/static/sandbox/Script
-  @zig build test --summary all
+  @zig build test --summary all -Dtarget={{target}} -Doptimize={{optimize}}
 
-lib target='native': (bind target)
+lib target='native' optimize='Debug': (bind target optimize)
   #!/usr/bin/env bash
   if [ -f "zig-out/lib/haze_mod_lib_static.lib" ]; then
     lib_pre=""
@@ -71,7 +70,7 @@ lib target='native': (bind target)
   [ -f "zig-out/bin/haze_mod_lib.dll" ] && cp zig-out/bin/haze_mod_lib.dll .out/lib/c/
 
   #build all swig dll's
-  zig build release -Dtarget={{target}}
+  zig build release -Dtarget={{target}} -Doptimize={{optimize}}
 
   #JAVA
   [ -d .out/lib/java/ ] || mkdir -p .out/lib/java/
@@ -107,29 +106,34 @@ lib target='native': (bind target)
   [ -d .out/package/ ] || mkdir -p .out/package/
   ./zip .out/lib/ .out/package/hazemodlib-{{target}}.zip
 
-test-c: lib
+test-c target='native' optimize='Debug': (lib target optimize)
   #!/usr/bin/env bash
   if [ -f "zig-out/lib/haze_mod_lib_static.lib" ]; then
     lib_pre=""
     lib_ext="lib"
+    dynamic_dir="bin"
+    dynamic_ext="dll"
   else
+    dynamic_dir="lib"
+    dynamic_ext="so"
     lib_ext="so"
     lib_pre="lib"
   fi
 
+
   [ -d .out/c/test/ ] || mkdir -p .out/c/test/
-  cp .out/lib/c/haze_mod_lib.h test/c/include/
-  cp .out/lib/c/${lib_pre}haze_mod_lib.$lib_ext test/c/include/
-  cp zig-out/${dynamic_dir}/${lib_pre}haze_mod_lib.$lib_ext .out/c/test/
-  clang -std=c23 -O0 test/c/test.c -o .out/c/test/test.exe -Itest/c/include/ -Ltest/c/include/ -lhaze_mod_lib
+  cp .out/lib/c/haze_mod_lib.h test/c/lib/
+  cp .out/lib/c/${lib_pre}haze_mod_lib.$lib_ext test/c/lib/
+  cp zig-out/${dynamic_dir}/${lib_pre}haze_mod_lib.$dynamic_ext .out/c/test/
+  clang -std=c23 -O0 test/c/test.c -o .out/c/test/test.exe -Itest/c/lib/ -Ltest/c/lib/ -lhaze_mod_lib
   .out/c/test/test.exe
 
-test-py: lib
+test-py target='native' optimize='Debug': (lib target optimize)
   @cp .out/lib/python/haze_mod_lib.py test/py/lib/
   @cp .out/lib/python/_haze_mod_lib.pyd test/py/lib/
   @py test/py/test.py
 
-test-j: lib
+test-j target='native' optimize='Debug': (lib target optimize)
   @[ -d .out/tmp/javatest/ ] || mkdir -p .out/tmp/javatest/
   @cp .out/lib/java/hazemodlib.jar test/java/lib/
 
@@ -138,12 +142,12 @@ test-j: lib
   @javac --release 11 -d .out/tmp/javatest/src/ -cp "test/java/lib/hazemodlib.jar" test/java/*.java
   @cd .out/tmp/javatest/ && java --enable-native-access=ALL-UNNAMED -cp "src;hazemodlib.jar" test.java.Main
 
-test-cs: lib
+test-cs target='native' optimize='Debug': (lib target optimize)
   @cp .out/lib/csharp/HazeModLib_CS.dll test/cs/lib/
   @cp .out/lib/csharp/HazeModLib.dll test/cs/lib/
   @dotnet build test/cs/test.csproj -c Release
   @./test/cs/bin/Release/net10.0/test.exe
 
-test-go: lib
+test-go target='native' optimize='Debug': (lib target optimize)
   @cp go/haze_mod_lib_go.dll test/go/
   @cd test/go/ && go run -race main.go

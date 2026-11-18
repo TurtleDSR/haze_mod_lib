@@ -1,4 +1,4 @@
-#include "include/haze_mod_lib.h"
+#include "lib/haze_mod_lib.h"
 #include "stdio.h"
 #include "string.h"
 

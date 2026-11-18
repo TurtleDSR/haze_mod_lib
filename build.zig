@@ -85,9 +85,9 @@ pub fn build(b: *std.Build) !void {
 
     const os_tag = target.result.os.tag;
     if (os_tag == .windows) {
-        java_bind_module.addIncludePath(b.path("bind/include/jni/win32/"));
+        java_bind_module.addIncludePath(b.path("bind/lib/jni/win32/"));
     } else if (os_tag == .linux) {
-        java_bind_module.addIncludePath(b.path("bind/include/jni/linux/"));
+        java_bind_module.addIncludePath(b.path("bind/lib/jni/linux/"));
     }
     java_bind_module.addIncludePath(b.path("bind/"));
 
@@ -137,15 +137,15 @@ pub fn build(b: *std.Build) !void {
 
     python_bind_module.addIncludePath(b.path("bind/"));
     if (os_tag == .windows) {
-        python_bind_module.addIncludePath(b.path("bind/include/python/win32/headers/"));
-        python_bind_module.addLibraryPath(b.path("bind/include/python/win32/libs/"));
+        python_bind_module.addIncludePath(b.path("bind/lib/python/win32/headers/"));
+        python_bind_module.addLibraryPath(b.path("bind/lib/python/win32/libs/"));
 
         python_bind_module.linkSystemLibrary("python314", .{
             .preferred_link_mode = .static,
         });
     } else if (os_tag == .linux) {
-        python_bind_module.addIncludePath(b.path("bind/include/python/linux/headers/"));
-        python_bind_module.addLibraryPath(b.path("bind/include/python/linux/libs/"));
+        python_bind_module.addIncludePath(b.path("bind/lib/python/linux/headers/"));
+        python_bind_module.addLibraryPath(b.path("bind/lib/python/linux/libs/"));
         
         python_bind_module.linkSystemLibrary("python3.14", .{
             .preferred_link_mode = .dynamic,
